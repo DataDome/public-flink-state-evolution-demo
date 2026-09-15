@@ -1,7 +1,10 @@
 package co.datadome.demo.flink.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import java.util.Objects;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Statistics accumulated for a single IP address over the course of a session.
@@ -18,6 +21,10 @@ import java.util.Objects;
  * a type as a POJO (and therefore only uses {@code PojoSerializer} for it) under those conditions.
  * It is also updated in place on every request, which avoids allocating a new record per event.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
 public final class IpStats {
 
     private String ip;
@@ -36,9 +43,6 @@ public final class IpStats {
      * live in a separate {@code MapState} in the operator, and this field is the running count.
      */
     private int distinctPathCount;
-
-    /** Required by Flink's POJO serializer. */
-    public IpStats() {}
 
     /** Creates the statistics for a session starting with that request. */
     public static IpStats startingWith(HttpRequest request) {
@@ -80,91 +84,10 @@ public final class IpStats {
      *
      * <p>The operator keeps mutating the instance it holds in state, so what it emits downstream
      * has to be a snapshot: otherwise every record already emitted would keep changing.
+     *
+     * <p>Goes through the builder so that it stays correct if a field is added or reordered.
      */
     public IpStats copy() {
-        IpStats copy = new IpStats();
-        copy.ip = ip;
-        copy.sessionStartMs = sessionStartMs;
-        copy.lastSeenMs = lastSeenMs;
-        copy.totalCount = totalCount;
-        copy.errorCount = errorCount;
-        copy.distinctPathCount = distinctPathCount;
-        return copy;
-    }
-
-    public String getIp() {
-        return ip;
-    }
-
-    public void setIp(String ip) {
-        this.ip = ip;
-    }
-
-    public long getSessionStartMs() {
-        return sessionStartMs;
-    }
-
-    public void setSessionStartMs(long sessionStartMs) {
-        this.sessionStartMs = sessionStartMs;
-    }
-
-    public long getLastSeenMs() {
-        return lastSeenMs;
-    }
-
-    public void setLastSeenMs(long lastSeenMs) {
-        this.lastSeenMs = lastSeenMs;
-    }
-
-    public long getTotalCount() {
-        return totalCount;
-    }
-
-    public void setTotalCount(long totalCount) {
-        this.totalCount = totalCount;
-    }
-
-    public long getErrorCount() {
-        return errorCount;
-    }
-
-    public void setErrorCount(long errorCount) {
-        this.errorCount = errorCount;
-    }
-
-    public int getDistinctPathCount() {
-        return distinctPathCount;
-    }
-
-    public void setDistinctPathCount(int distinctPathCount) {
-        this.distinctPathCount = distinctPathCount;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof IpStats that)) {
-            return false;
-        }
-        return sessionStartMs == that.sessionStartMs
-                && lastSeenMs == that.lastSeenMs
-                && totalCount == that.totalCount
-                && errorCount == that.errorCount
-                && distinctPathCount == that.distinctPathCount
-                && Objects.equals(ip, that.ip);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(ip, sessionStartMs, lastSeenMs, totalCount, errorCount, distinctPathCount);
-    }
-
-    @Override
-    public String toString() {
-        return ("IpStats{ip='%s', sessionStartMs=%d, lastSeenMs=%d, totalCount=%d, errorCount=%d, "
-                        + "distinctPathCount=%d}")
-                .formatted(ip, sessionStartMs, lastSeenMs, totalCount, errorCount, distinctPathCount);
+        return toBuilder().build();
     }
 }
