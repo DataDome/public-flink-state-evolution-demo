@@ -1,6 +1,5 @@
 # Local cluster for the state evolution demo: a single-node Kafka (KRaft, no ZooKeeper) and a
-# Flink session cluster, so that savepointing and restoring a running job is a real operation
-# rather than something described on a slide.
+# Flink session cluster.
 #
 # The state backend is chosen by the STATE_BACKEND variable, which scripts/start.sh sets.
 

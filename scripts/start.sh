@@ -2,10 +2,6 @@
 # Starts Kafka and the Flink session cluster, with the chosen state backend.
 #
 # Usage: scripts/start.sh [hashmap|rocksdb]
-#
-# The backend has to be picked here rather than in the job, because switching it is part of the
-# demo: the same savepoint is restored under both, and they do not fail the same way when the
-# state schema no longer matches.
 set -euo pipefail
 
 BACKEND="${1:-hashmap}"
