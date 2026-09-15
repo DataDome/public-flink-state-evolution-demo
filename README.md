@@ -118,6 +118,12 @@ and survives `scripts/stop.sh`.
 
 ## Notes
 
+- **`IpStats` state is written by a hand-rolled serializer.** `state/IpStatsSerializer` replaces
+  `PojoSerializer` for that one piece of state. It is not needed — it is there to show how a custom
+  serializer is written, and it records a layout version so that a future layout change can be
+  detected. See
+  [docs/state-evolution.md](docs/state-evolution.md). Records between operators are unaffected and
+  still use `PojoSerializer`.
 - **Counts grow, ratios do not.** A session has no window, so `TOTAL_REQUESTS_AT_LEAST` increases
   monotonically and is eventually crossed by every IP address, given enough traffic. That is why
   the interesting rules are the other two: an error ratio is scale-free and stays put, and a

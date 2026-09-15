@@ -16,6 +16,9 @@ import org.junit.jupiter.api.Test;
  *
  * <p>If someone adds a field Flink cannot treat as a POJO field, this test fails here rather than
  * at savepoint restore time.
+ *
+ * <p>For {@link IpStats} this covers the format used between operators only: its state is written
+ * by {@code IpStatsSerializer}, which {@code IpStatsSerializerTest} covers instead.
  */
 class StateSerializationTest {
 

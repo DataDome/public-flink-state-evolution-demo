@@ -6,6 +6,7 @@ import co.datadome.demo.flink.model.HttpRequest;
 import co.datadome.demo.flink.model.IpStats;
 import java.util.List;
 import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.runtime.checkpoint.OperatorSubtaskState;
 import org.apache.flink.streaming.api.operators.KeyedProcessOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -22,12 +23,16 @@ class IpStatsFunctionTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        harness =
-                new KeyedOneInputStreamOperatorTestHarness<>(
-                        new KeyedProcessOperator<>(new IpStatsFunction()),
-                        HttpRequest::getIp,
-                        Types.STRING);
+        harness = newHarness();
         harness.open();
+    }
+
+    private static KeyedOneInputStreamOperatorTestHarness<String, HttpRequest, IpStats> newHarness()
+            throws Exception {
+        return new KeyedOneInputStreamOperatorTestHarness<>(
+                new KeyedProcessOperator<>(new IpStatsFunction()),
+                HttpRequest::getIp,
+                Types.STRING);
     }
 
     @AfterEach
@@ -143,5 +148,28 @@ class IpStatsFunctionTest {
         assertThat(fresh.getTotalCount()).isEqualTo(1);
         assertThat(fresh.getDistinctPathCount()).isEqualTo(1);
         assertThat(fresh.getSessionStartMs()).isEqualTo(later);
+    }
+    @Test
+    void statisticsSurviveASnapshotAndRestore() throws Exception {
+        send(1_000, IP, "/login", 403);
+        send(2_000, IP, "/search", 200);
+
+        OperatorSubtaskState snapshot = harness.snapshot(1L, 1L);
+        harness.close();
+
+        // A fresh operator, reading the state back through IpStatsSerializer.
+        harness = newHarness();
+        harness.initializeState(snapshot);
+        harness.open();
+
+        send(3_000, IP, "/login", 200);
+
+        IpStats restored = emitted().getLast();
+        assertThat(restored.getSessionStartMs())
+                .as("the session continues rather than starting again")
+                .isEqualTo(1_000);
+        assertThat(restored.getTotalCount()).isEqualTo(3);
+        assertThat(restored.getErrorCount()).isEqualTo(1);
+        assertThat(restored.getDistinctPathCount()).isEqualTo(2);
     }
 }
