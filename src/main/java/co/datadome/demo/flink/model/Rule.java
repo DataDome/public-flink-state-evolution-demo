@@ -29,7 +29,7 @@ public final class Rule {
     /**
      * Number of requests a session must have before this rule is evaluated at all.
      *
-     * <p>The first failed request of a session is a 100% error ratio, and
+     * <p>For example, The first failed request of a session is a 100% error ratio, and
      * {@link Metric#DISTINCT_PATHS_AT_MOST} would match every session on its first request.
      */
     private long minTotalRequests;
@@ -108,7 +108,7 @@ public final class Rule {
         if (!isEnabled || stats.getTotalCount() < minTotalRequests) {
             return false;
         }
-        return metric.isReached(metric.extract(stats), threshold);
+        return metric.isReached(stats, threshold);
     }
 
     @Override

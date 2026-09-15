@@ -2,10 +2,12 @@ package co.datadome.demo.flink.tools;
 
 import co.datadome.demo.flink.model.HttpRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ThreadLocalRandom;
+
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -33,13 +35,18 @@ public final class DemoDataGenerator {
     private static final List<String> USER_AGENTS =
             List.of("Mozilla/5.0 (Macintosh)", "Mozilla/5.0 (Windows NT 10.0)", "curl/8.5.0");
 
-    /** Requests sent per second, across all IP addresses. */
+    /**
+     * Requests sent per second, across all IP addresses.
+     */
     private static final int REQUESTS_PER_SECOND = 20;
 
-    /** Share of the traffic coming from the abusive IP address. */
+    /**
+     * Share of the traffic coming from the abusive IP address.
+     */
     private static final double ABUSIVE_SHARE = 0.3;
 
-    private DemoDataGenerator() {}
+    private DemoDataGenerator() {
+    }
 
     public static void main(String[] args) throws Exception {
         String brokers = argument(args, "--bootstrap-servers", "localhost:9092");
@@ -75,13 +82,13 @@ public final class DemoDataGenerator {
             // Always the same path, mostly rejected: high total and error counts, one distinct path.
             int statusCode = random.nextInt(10) < 8 ? 403 : 200;
             return new HttpRequest(now, ABUSIVE_IP, "/login", "curl/8.5.0", statusCode);
+        } else {
+            String ip = NORMAL_IPS.get(random.nextInt(NORMAL_IPS.size()));
+            String path = NORMAL_PATHS.get(random.nextInt(NORMAL_PATHS.size()));
+            String userAgent = USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
+            int statusCode = random.nextInt(20) == 0 ? 500 : 200;
+            return new HttpRequest(now, ip, path, userAgent, statusCode);
         }
-
-        String ip = NORMAL_IPS.get(random.nextInt(NORMAL_IPS.size()));
-        String path = NORMAL_PATHS.get(random.nextInt(NORMAL_PATHS.size()));
-        String userAgent = USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
-        int statusCode = random.nextInt(20) == 0 ? 500 : 200;
-        return new HttpRequest(now, ip, path, userAgent, statusCode);
     }
 
     private static String argument(String[] args, String name, String defaultValue) {

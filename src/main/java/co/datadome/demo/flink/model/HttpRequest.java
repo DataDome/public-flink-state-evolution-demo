@@ -72,7 +72,7 @@ public final class HttpRequest {
     }
 
     /**
-     * Whether that request failed, which is what {@link Metric#ERROR_REQUESTS} counts.
+     * Whether that request failed, which is what {@link Metric#ERROR_RATIO_AT_LEAST} counts.
      *
      * <p>Derived from the status code, so it is kept out of the JSON written to Kafka: Jackson
      * would otherwise publish it as an "error" field that nothing ever reads back.

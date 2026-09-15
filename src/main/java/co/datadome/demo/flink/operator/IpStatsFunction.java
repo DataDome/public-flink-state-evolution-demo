@@ -37,17 +37,12 @@ public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequ
 
     @Override
     public void open(OpenContext openContext) {
-        statsState =
-                getRuntimeContext().getState(new ValueStateDescriptor<>("ipStats", IpStats.class));
-        seenPathsState =
-                getRuntimeContext()
-                        .getMapState(
-                                new MapStateDescriptor<>("seenPaths", String.class, Boolean.class));
+        statsState = getRuntimeContext().getState(new ValueStateDescriptor<>("ipStats", IpStats.class));
+        seenPathsState = getRuntimeContext().getMapState(new MapStateDescriptor<>("seenPaths", String.class, Boolean.class));
     }
 
     @Override
-    public void processElement(HttpRequest request, Context ctx, Collector<IpStats> out)
-            throws Exception {
+    public void processElement(HttpRequest request, Context ctx, Collector<IpStats> out) throws Exception {
         IpStats stats = statsState.value();
         if (stats == null) {
             stats = IpStats.startingWith(request);
@@ -67,8 +62,7 @@ public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequ
     }
 
     @Override
-    public void onTimer(long timestamp, OnTimerContext ctx, Collector<IpStats> out)
-            throws Exception {
+    public void onTimer(long timestamp, OnTimerContext ctx, Collector<IpStats> out) throws Exception {
         IpStats stats = statsState.value();
         if (stats == null) {
             return;

@@ -45,15 +45,17 @@ public enum Metric {
     }
 
     /**
-     * Whether that observed value reaches that threshold, in the direction this metric implies.
+     * Whether this metric on those stats reaches that threshold, in the direction this metric implies.
      *
      * <p>Both directions are inclusive: {@code AT_LEAST} fires on {@code >=} and {@code AT_MOST}
      * on {@code <=}.
      */
-    public boolean isReached(double observedValue, double threshold) {
+    public boolean isReached(IpStats stats, double threshold) {
         return switch (this) {
-            case TOTAL_REQUESTS_AT_LEAST, ERROR_RATIO_AT_LEAST -> observedValue >= threshold;
-            case DISTINCT_PATHS_AT_MOST -> observedValue <= threshold;
+            case TOTAL_REQUESTS_AT_LEAST -> stats.getTotalCount() >= threshold;
+            case ERROR_RATIO_AT_LEAST -> stats.getErrorRatio() >= threshold;
+            case DISTINCT_PATHS_AT_MOST -> stats.getDistinctPathCount() <= threshold;
         };
     }
 }
+

@@ -8,7 +8,9 @@ import co.datadome.demo.flink.operator.IpStatsFunction;
 import co.datadome.demo.flink.operator.RuleEvaluationFunction;
 import co.datadome.demo.flink.serde.JsonDeserializer;
 import co.datadome.demo.flink.serde.JsonSerializer;
+
 import java.time.Duration;
+
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.Configuration;
@@ -40,7 +42,9 @@ import org.apache.flink.util.ParameterTool;
  */
 public final class BehavioralAnalysisJob {
 
-    /** Lateness tolerated on the requests stream before a record is considered late. */
+    /**
+     * Lateness tolerated on the requests stream before a record is considered late.
+     */
     private static final Duration MAX_OUT_OF_ORDERNESS = Duration.ofSeconds(5);
 
     /**
@@ -58,7 +62,8 @@ public final class BehavioralAnalysisJob {
 
     private static final Duration CHECKPOINT_INTERVAL = Duration.ofSeconds(10);
 
-    private BehavioralAnalysisJob() {}
+    private BehavioralAnalysisJob() {
+    }
 
     public static void main(String[] args) throws Exception {
         ParameterTool params = ParameterTool.fromArgs(args);
@@ -94,7 +99,9 @@ public final class BehavioralAnalysisJob {
         return config;
     }
 
-    /** Builds the pipeline on that environment. Extracted from {@link #main} so tests can reuse it. */
+    /**
+     * Builds the pipeline on that environment. Extracted from {@link #main} so tests can reuse it.
+     */
     static void buildPipeline(
             StreamExecutionEnvironment env,
             String brokers,
@@ -138,6 +145,8 @@ public final class BehavioralAnalysisJob {
                         .withTimestampAssigner((request, recordTimestamp) -> request.getTimestampMs())
                         .withIdleness(REQUESTS_IDLENESS);
 
+        WatermarkStrategy<Rule> rulesWatermarks = WatermarkStrategy.<Rule>noWatermarks().withIdleness(RULES_IDLENESS);
+
         DataStream<IpStats> stats =
                 env.fromSource(requestsSource, requestsWatermarks, "HTTP requests")
                         .uid("source-http-requests")
@@ -147,10 +156,7 @@ public final class BehavioralAnalysisJob {
                         .name("IP statistics");
 
         BroadcastStream<Rule> rules =
-                env.fromSource(
-                                rulesSource,
-                                WatermarkStrategy.<Rule>noWatermarks().withIdleness(RULES_IDLENESS),
-                                "Rules")
+                env.fromSource(rulesSource, rulesWatermarks, "Rules")
                         .uid("source-rules")
                         .broadcast(RuleEvaluationFunction.RULES_DESCRIPTOR);
 
