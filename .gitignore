@@ -1,0 +1,16 @@
+# Maven
+target/
+*.iml
+
+# IntelliJ: Ignore everything except formatting configuration
+.idea/
+!.idea/codeStyles
+
+# VS Code
+.vscode/
+
+# Checkpoints and savepoints produced by the local cluster.
+docker/state/checkpoints/*
+docker/state/savepoints/*
+!docker/state/checkpoints/.gitkeep
+!docker/state/savepoints/.gitkeep

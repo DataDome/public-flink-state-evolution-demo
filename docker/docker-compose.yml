@@ -1,0 +1,94 @@
+# Local cluster for the state evolution demo: a single-node Kafka (KRaft, no ZooKeeper) and a
+# Flink session cluster, so that savepointing and restoring a running job is a real operation
+# rather than something described on a slide.
+#
+# The state backend is chosen by the STATE_BACKEND variable, which scripts/start.sh sets.
+
+name: flink-state-evolution-demo
+
+x-flink-common: &flink-common
+  image: flink:2.3.0-java21
+  environment: &flink-env
+    # Must be identical on the job manager and the task manager.
+    FLINK_PROPERTIES: |
+      jobmanager.rpc.address: jobmanager
+      taskmanager.numberOfTaskSlots: 4
+      parallelism.default: 2
+      state.backend.type: ${STATE_BACKEND:-hashmap}
+      execution.checkpointing.dir: file:///flink-state/checkpoints
+      execution.checkpointing.savepoint-dir: file:///flink-state/savepoints
+      execution.checkpointing.interval: 10s
+  volumes:
+    # Shared between both services, and bind-mounted so savepoints survive `docker compose down`.
+    - ./state:/flink-state
+    # The built job jar, so that `flink run` inside the container can see it.
+    - ../target:/jars
+
+services:
+  kafka:
+    image: apache/kafka:4.3.1
+    hostname: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:19092,CONTROLLER://:9093,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      CLUSTER_ID: flink-state-evolution-demo
+      # Switching state backend means restarting the cluster. Without a persistent log directory
+      # every topic would be wiped, and a job restored from a savepoint would come back holding
+      # Kafka offsets that no longer exist.
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "kafka:19092"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  # Creates the topics once, then exits.
+  kafka-init:
+    image: apache/kafka:4.3.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        for topic in http-requests rules rule-matches; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 \
+            --create --if-not-exists --topic "$$topic" --partitions 4 --replication-factor 1
+        done
+        echo "Topics ready:"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --list
+
+  jobmanager:
+    <<: *flink-common
+    hostname: jobmanager
+    command: jobmanager
+    ports:
+      - "8081:8081"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  taskmanager:
+    <<: *flink-common
+    command: taskmanager
+    depends_on:
+      - jobmanager
+
+volumes:
+  kafka-data:
