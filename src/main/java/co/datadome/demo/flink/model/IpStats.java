@@ -1,5 +1,6 @@
 package co.datadome.demo.flink.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Objects;
 
 /**
@@ -61,6 +62,17 @@ public final class IpStats {
         }
         // Requests can be slightly out of order within the allowed lateness, so never move backwards.
         lastSeenMs = Math.max(lastSeenMs, request.getTimestampMs());
+    }
+
+    /**
+     * Share of this session's requests that failed, between 0 and 1.
+     *
+     * <p>Derived rather than stored, because only the counts can be accumulated. Annotated to keep
+     * it out of any JSON rendering of this record.
+     */
+    @JsonIgnore
+    public double getErrorRatio() {
+        return totalCount == 0 ? 0.0 : (double) errorCount / totalCount;
     }
 
     /**

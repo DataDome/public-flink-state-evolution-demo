@@ -32,17 +32,28 @@ All three topics carry JSON.
 `"isEnabled":false` removes it.
 
 ```json
-{"ruleId":"bot-errors","metric":"ERROR_REQUESTS","threshold":100,"isEnabled":true}
+{"ruleId":"failing-a-lot","metric":"ERROR_RATIO_AT_LEAST","threshold":0.5,"minTotalRequests":50,"isEnabled":true}
 ```
 
-`metric` is one of `TOTAL_REQUESTS`, `ERROR_REQUESTS`, `DISTINCT_PATHS`. A rule selects one of the
-statistics the pipeline already computes; it cannot filter individual requests, because the
-statistics are aggregated before any rule is known.
+A rule selects one of the statistics the pipeline already computes; it cannot filter individual
+requests, because the statistics are aggregated before any rule is known. Each metric states the
+direction of its own comparison, so that no rule depends on an unwritten convention:
+
+| `metric` | Fires when | Threshold |
+|---|---|---|
+| `TOTAL_REQUESTS_AT_LEAST` | request count `>=` threshold | a count |
+| `ERROR_RATIO_AT_LEAST` | share of failed requests `>=` threshold | between 0 and 1 |
+| `DISTINCT_PATHS_AT_MOST` | distinct path count `<=` threshold | a count |
+
+Both directions are inclusive. `minTotalRequests` is the number of requests a session must have
+before the rule is evaluated at all: a single failed request is a 100% error ratio and means
+nothing, and without the guard `DISTINCT_PATHS_AT_MOST` would match every session on its first
+request.
 
 `rule-matches`:
 
 ```json
-{"ruleId":"bot-errors","ip":"10.0.0.66","metric":"ERROR_REQUESTS","observedValue":560,"threshold":100,"detectedAtMs":1789404498084}
+{"ruleId":"failing-a-lot","ip":"10.0.0.66","metric":"ERROR_RATIO_AT_LEAST","observedValue":0.79,"threshold":0.5,"detectedAtMs":1789404498084}
 ```
 
 ## Requirements
@@ -58,16 +69,20 @@ mvn package                     # build and run the tests
 ./scripts/generate-traffic.sh   # fake traffic, in its own terminal
 ./scripts/watch-matches.sh      # tail the matches, in another terminal
 
-./scripts/publish-rule.sh bot-errors ERROR_REQUESTS 100
+# fires on the bot: it fails about 80% of its requests, everyone else about 5%
+./scripts/publish-rule.sh failing-a-lot ERROR_RATIO_AT_LEAST 0.5 50
+
+# fires on the bot too, for a different reason: it only ever hits /login
+./scripts/publish-rule.sh one-path-only DISTINCT_PATHS_AT_MOST 2 50
 ```
 
 Within a few seconds, `10.0.0.66` — which behaves like a credential stuffing bot — crosses the
 threshold and a match appears. The Flink dashboard is on <http://localhost:8081>.
 
-To remove the rule again:
+To remove a rule again:
 
 ```bash
-./scripts/publish-rule.sh bot-errors ERROR_REQUESTS 100 false
+./scripts/publish-rule.sh failing-a-lot ERROR_RATIO_AT_LEAST 0.5 50 false
 ```
 
 ## Savepoint and restore
@@ -103,12 +118,11 @@ and survives `scripts/stop.sh`.
 
 ## Notes
 
-- **Counters only grow.** Because a session has no window, every counter increases monotonically
-  until the session expires. Any threshold is therefore eventually crossed by every IP address,
-  given enough traffic. Pick thresholds that separate the bot from the rest for the length of the
-  demo — `ERROR_REQUESTS` at 100 or so works well, since `10.0.0.66` collects errors about ten
-  times faster than anyone else, while `DISTINCT_PATHS` separates them structurally (the bot only
-  ever hits `/login`).
+- **Counts grow, ratios do not.** A session has no window, so `TOTAL_REQUESTS_AT_LEAST` increases
+  monotonically and is eventually crossed by every IP address, given enough traffic. That is why
+  the interesting rules are the other two: an error ratio is scale-free and stays put, and a
+  distinct path count separates the bot structurally. `TOTAL_REQUESTS_AT_LEAST` is still useful,
+  but treat it as "this session is big", not as a detection on its own.
 - The Kafka connector is `5.0.0-2.2`: no build against Flink 2.3 has been released yet. It only
   uses `@Public` API and declares its Flink dependencies as `provided`, so it introduces no
   conflicting jars.

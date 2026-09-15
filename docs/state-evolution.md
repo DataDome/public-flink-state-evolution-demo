@@ -21,7 +21,9 @@ are easy to miss, and each one fails in its own way when it is missing.
 
 `IpStatsFunction`, keyed by IP address:
 
-- `ValueState<IpStats> ipStats` — the record in `model/IpStats.java`.
+- `ValueState<IpStats> ipStats` — the record in `model/IpStats.java`. Note that it stores the
+  request and error *counts*, never the error ratio: a ratio cannot be accumulated, so it is
+  derived on read.
 - `MapState<String, Boolean> seenPaths` — one entry per distinct path seen.
 
 `RuleEvaluationFunction`, keyed by IP address, plus broadcast state:
@@ -38,7 +40,9 @@ To fill in. Rough ordering from "just works" to "does not work":
   `PojoSerializer`; the new field comes back as its default value for existing keys.
 - **Remove a field** from `IpStats`. Also supported; the old value is dropped on restore.
 - **Add a constant** to the `Metric` enum. Supported by `EnumSerializer`, and worth showing because
-  `Metric` lives inside the broadcast state rather than in the keyed state.
+  `Metric` lives inside the broadcast state rather than in the keyed state. *Renaming* a constant
+  is not supported, which is worth contrasting: the metric names encode their comparison direction
+  (`..._AT_LEAST`, `..._AT_MOST`), so renaming one is a tempting change that would break restore.
 - **Widen a field**, `int distinctPathCount` to `long`. Not a supported POJO evolution: Flink
   matches fields by name *and* type, so this reads as "drop one field, add another".
 - **Rename a field**. Indistinguishable from removing one field and adding another, so the

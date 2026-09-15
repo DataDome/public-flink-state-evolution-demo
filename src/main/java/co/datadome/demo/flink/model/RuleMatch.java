@@ -15,9 +15,9 @@ public final class RuleMatch {
     private Metric metric;
 
     /** Value the metric had reached when the rule fired. */
-    private long observedValue;
+    private double observedValue;
 
-    private long threshold;
+    private double threshold;
 
     /** Event time at which the rule fired. */
     private long detectedAtMs;
@@ -61,19 +61,19 @@ public final class RuleMatch {
         this.metric = metric;
     }
 
-    public long getObservedValue() {
+    public double getObservedValue() {
         return observedValue;
     }
 
-    public void setObservedValue(long observedValue) {
+    public void setObservedValue(double observedValue) {
         this.observedValue = observedValue;
     }
 
-    public long getThreshold() {
+    public double getThreshold() {
         return threshold;
     }
 
-    public void setThreshold(long threshold) {
+    public void setThreshold(double threshold) {
         this.threshold = threshold;
     }
 
@@ -93,8 +93,8 @@ public final class RuleMatch {
         if (!(o instanceof RuleMatch that)) {
             return false;
         }
-        return observedValue == that.observedValue
-                && threshold == that.threshold
+        return Double.compare(observedValue, that.observedValue) == 0
+                && Double.compare(threshold, that.threshold) == 0
                 && detectedAtMs == that.detectedAtMs
                 && Objects.equals(ruleId, that.ruleId)
                 && Objects.equals(ip, that.ip)
@@ -108,7 +108,7 @@ public final class RuleMatch {
 
     @Override
     public String toString() {
-        return ("RuleMatch{ruleId='%s', ip='%s', metric=%s, observedValue=%d, threshold=%d, "
+        return ("RuleMatch{ruleId='%s', ip='%s', metric=%s, observedValue=%s, threshold=%s, "
                         + "detectedAtMs=%d}")
                 .formatted(ruleId, ip, metric, observedValue, threshold, detectedAtMs);
     }
