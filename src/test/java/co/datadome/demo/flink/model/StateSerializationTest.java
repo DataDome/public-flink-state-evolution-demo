@@ -47,6 +47,13 @@ class StateSerializationTest {
     }
 
     @Test
+    void everyRuleFieldIsCoveredBySerialization() {
+        PojoTypeInfo<Rule> typeInfo = (PojoTypeInfo<Rule>) TypeInformation.of(Rule.class);
+        assertThat(typeInfo.getFieldNames())
+                .containsExactlyInAnyOrder("ruleId", "metric", "threshold", "minTotalRequests", "enabled");
+    }
+
+    @Test
     void everyIpStatsFieldIsCoveredBySerialization() {
         PojoTypeInfo<IpStats> typeInfo = (PojoTypeInfo<IpStats>) TypeInformation.of(IpStats.class);
         assertThat(typeInfo.getFieldNames())

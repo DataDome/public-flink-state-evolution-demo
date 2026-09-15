@@ -1,6 +1,5 @@
 package co.datadome.demo.flink.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 
 /**
@@ -8,7 +7,7 @@ import java.util.Objects;
  *
  * <p>A rule fires when the {@link Metric} it selects reaches its threshold for a given IP address,
  * once that session has at least {@link #getMinTotalRequests()} requests. Publishing a rule with
- * the same id replaces the previous version; publishing it with {@code isEnabled} set to false
+ * the same id replaces the previous version; publishing it with {@code enabled} set to false
  * removes it.
  *
  * <p>This class is mutable, and has a public no-argument constructor, because Flink only recognises
@@ -34,13 +33,7 @@ public final class Rule {
      */
     private long minTotalRequests;
 
-    /**
-     * Explicitly named for Jackson. Flink requires the setter to be {@code setIsEnabled} for a
-     * field called {@code isEnabled}, but Jackson derives "enabled" from the {@code isEnabled()}
-     * getter and "isEnabled" from that setter, and would treat them as two different properties.
-     */
-    @JsonProperty("isEnabled")
-    private boolean isEnabled;
+    private boolean enabled;
 
     /** Required by Flink's POJO serializer. */
     public Rule() {}
@@ -50,12 +43,12 @@ public final class Rule {
             Metric metric,
             double threshold,
             long minTotalRequests,
-            boolean isEnabled) {
+            boolean enabled) {
         this.ruleId = ruleId;
         this.metric = metric;
         this.threshold = threshold;
         this.minTotalRequests = minTotalRequests;
-        this.isEnabled = isEnabled;
+        this.enabled = enabled;
     }
 
     public String getRuleId() {
@@ -90,22 +83,17 @@ public final class Rule {
         this.minTotalRequests = minTotalRequests;
     }
 
-    /**
-     * Named to match Flink's POJO field detection: for the field {@code isEnabled}, Flink accepts
-     * {@code isEnabled()} as the getter but requires {@code setIsEnabled} as the setter.
-     */
-    @JsonProperty("isEnabled")
     public boolean isEnabled() {
-        return isEnabled;
+        return enabled;
     }
 
-    public void setIsEnabled(boolean isEnabled) {
-        this.isEnabled = isEnabled;
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     /** Whether that statistics record reaches this rule's threshold. */
     public boolean matches(IpStats stats) {
-        if (!isEnabled || stats.getTotalCount() < minTotalRequests) {
+        if (!enabled || stats.getTotalCount() < minTotalRequests) {
             return false;
         }
         return metric.isReached(stats, threshold);
@@ -121,19 +109,19 @@ public final class Rule {
         }
         return Double.compare(threshold, that.threshold) == 0
                 && minTotalRequests == that.minTotalRequests
-                && isEnabled == that.isEnabled
+                && enabled == that.enabled
                 && Objects.equals(ruleId, that.ruleId)
                 && metric == that.metric;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(ruleId, metric, threshold, minTotalRequests, isEnabled);
+        return Objects.hash(ruleId, metric, threshold, minTotalRequests, enabled);
     }
 
     @Override
     public String toString() {
-        return "Rule{ruleId='%s', metric=%s, threshold=%s, minTotalRequests=%d, isEnabled=%b}"
-                .formatted(ruleId, metric, threshold, minTotalRequests, isEnabled);
+        return "Rule{ruleId='%s', metric=%s, threshold=%s, minTotalRequests=%d, enabled=%b}"
+                .formatted(ruleId, metric, threshold, minTotalRequests, enabled);
     }
 }

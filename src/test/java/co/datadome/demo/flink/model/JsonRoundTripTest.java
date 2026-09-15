@@ -36,7 +36,7 @@ class JsonRoundTripTest {
     void ruleIsReadFromTheJsonThePublishScriptSends() throws Exception {
         String json =
                 "{\"ruleId\":\"failing-a-lot\",\"metric\":\"ERROR_RATIO_AT_LEAST\","
-                        + "\"threshold\":0.5,\"minTotalRequests\":50,\"isEnabled\":true}";
+                        + "\"threshold\":0.5,\"minTotalRequests\":50,\"enabled\":true}";
         assertThat(read(Rule.class, json))
                 .isEqualTo(new Rule("failing-a-lot", Metric.ERROR_RATIO_AT_LEAST, 0.5, 50, true));
     }
@@ -45,7 +45,7 @@ class JsonRoundTripTest {
     void anIntegerThresholdIsReadForACountMetric() throws Exception {
         String json =
                 "{\"ruleId\":\"one-path-only\",\"metric\":\"DISTINCT_PATHS_AT_MOST\","
-                        + "\"threshold\":2,\"minTotalRequests\":50,\"isEnabled\":true}";
+                        + "\"threshold\":2,\"minTotalRequests\":50,\"enabled\":true}";
         assertThat(read(Rule.class, json).getThreshold()).isEqualTo(2.0);
     }
 
@@ -53,7 +53,7 @@ class JsonRoundTripTest {
     void aDisabledRuleIsReadAsDisabled() throws Exception {
         String json =
                 "{\"ruleId\":\"r1\",\"metric\":\"ERROR_RATIO_AT_LEAST\","
-                        + "\"threshold\":0.5,\"minTotalRequests\":50,\"isEnabled\":false}";
+                        + "\"threshold\":0.5,\"minTotalRequests\":50,\"enabled\":false}";
         assertThat(read(Rule.class, json).isEnabled()).isFalse();
     }
 

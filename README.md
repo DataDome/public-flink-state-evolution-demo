@@ -29,10 +29,10 @@ All three topics carry JSON.
 ```
 
 `rules` — a changelog: publishing the same `ruleId` again replaces it, publishing it with
-`"isEnabled":false` removes it.
+`"enabled":false` removes it.
 
 ```json
-{"ruleId":"failing-a-lot","metric":"ERROR_RATIO_AT_LEAST","threshold":0.5,"minTotalRequests":50,"isEnabled":true}
+{"ruleId":"failing-a-lot","metric":"ERROR_RATIO_AT_LEAST","threshold":0.5,"minTotalRequests":50,"enabled":true}
 ```
 
 A rule selects one of the statistics the pipeline already computes; it cannot filter individual

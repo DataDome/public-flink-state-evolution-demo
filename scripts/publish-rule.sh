@@ -54,7 +54,7 @@ fi
 
 cd "$(dirname "$0")/.."
 
-RULE="{\"ruleId\":\"$RULE_ID\",\"metric\":\"$METRIC\",\"threshold\":$THRESHOLD,\"minTotalRequests\":$MIN_TOTAL_REQUESTS,\"isEnabled\":$ENABLED}"
+RULE="{\"ruleId\":\"$RULE_ID\",\"metric\":\"$METRIC\",\"threshold\":$THRESHOLD,\"minTotalRequests\":$MIN_TOTAL_REQUESTS,\"enabled\":$ENABLED}"
 echo "Publishing: $RULE"
 
 echo "$RULE" | docker compose -f docker/docker-compose.yml exec -T kafka \
