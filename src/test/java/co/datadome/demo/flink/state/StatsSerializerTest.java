@@ -1,9 +1,6 @@
 package co.datadome.demo.flink.state;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import co.datadome.demo.flink.model.IpStats;
-import java.io.IOException;
+import co.datadome.demo.flink.model.Stats;
 import org.apache.flink.api.common.serialization.SerializerConfigImpl;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -12,13 +9,17 @@ import org.apache.flink.core.memory.DataInputDeserializer;
 import org.apache.flink.core.memory.DataOutputSerializer;
 import org.junit.jupiter.api.Test;
 
-class IpStatsSerializerTest {
+import java.io.IOException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class StatsSerializerTest {
 
     /** A layout version this job does not have, standing in for a future or foreign one. */
     private static final int UNKNOWN_VERSION = 99;
 
-    private static IpStats sample() {
-        return IpStats.builder()
+    private static Stats sample() {
+        return Stats.builder()
                 .ip("10.0.0.66")
                 .sessionStartMs(1_000)
                 .lastSeenMs(9_000)
@@ -28,29 +29,29 @@ class IpStatsSerializerTest {
                 .build();
     }
 
-    private static byte[] write(TypeSerializer<IpStats> serializer, IpStats value)
+    private static byte[] write(TypeSerializer<Stats> serializer, Stats value)
             throws IOException {
         DataOutputSerializer out = new DataOutputSerializer(64);
         serializer.serialize(value, out);
         return out.getCopyOfBuffer();
     }
 
-    private static IpStats read(TypeSerializer<IpStats> serializer, byte[] bytes)
+    private static Stats read(TypeSerializer<Stats> serializer, byte[] bytes)
             throws IOException {
         return serializer.deserialize(new DataInputDeserializer(bytes));
     }
 
     @Test
     void recordSurvivesARoundTrip() throws Exception {
-        IpStatsSerializer serializer = new IpStatsSerializer();
+        StatsSerializer serializer = new StatsSerializer();
 
         assertThat(read(serializer, write(serializer, sample()))).isEqualTo(sample());
     }
 
     @Test
     void aNullIpAddressSurvivesARoundTrip() throws Exception {
-        IpStatsSerializer serializer = new IpStatsSerializer();
-        IpStats stats = sample();
+        StatsSerializer serializer = new StatsSerializer();
+        Stats stats = sample();
         stats.setIp(null);
 
         assertThat(read(serializer, write(serializer, stats)).getIp()).isNull();
@@ -58,11 +59,11 @@ class IpStatsSerializerTest {
 
     @Test
     void reusingARecordDoesNotLeaveStaleValuesBehind() throws Exception {
-        IpStatsSerializer serializer = new IpStatsSerializer();
-        IpStats reuse = sample();
+        StatsSerializer serializer = new StatsSerializer();
+        Stats reuse = sample();
 
-        IpStats other = IpStats.builder().ip("10.0.0.1").totalCount(1).build();
-        IpStats result =
+        Stats other = Stats.builder().ip("10.0.0.1").totalCount(1).build();
+        Stats result =
                 serializer.deserialize(reuse, new DataInputDeserializer(write(serializer, other)));
 
         assertThat(result).isEqualTo(other);
@@ -70,13 +71,13 @@ class IpStatsSerializerTest {
 
     @Test
     void copyPreservesEveryField() {
-        assertThat(new IpStatsSerializer().copy(sample())).isEqualTo(sample());
-        assertThat(new IpStatsSerializer().copy(sample(), new IpStats())).isEqualTo(sample());
+        assertThat(new StatsSerializer().copy(sample())).isEqualTo(sample());
+        assertThat(new StatsSerializer().copy(sample(), new Stats())).isEqualTo(sample());
     }
 
     @Test
     void copyingThroughTheViewsPreservesTheBytes() throws Exception {
-        IpStatsSerializer serializer = new IpStatsSerializer();
+        StatsSerializer serializer = new StatsSerializer();
         byte[] original = write(serializer, sample());
 
         DataOutputSerializer out = new DataOutputSerializer(64);
@@ -87,9 +88,9 @@ class IpStatsSerializerTest {
 
     @Test
     void theSnapshotReportsTheSerializersVersion() {
-        assertThat(new IpStatsSerializer().snapshotConfiguration().getCurrentVersion())
-                .isEqualTo(IpStatsSerializer.LATEST_VERSION);
-        assertThat(new IpStatsSerializerSnapshot(UNKNOWN_VERSION).getCurrentVersion())
+        assertThat(new StatsSerializer().snapshotConfiguration().getCurrentVersion())
+                .isEqualTo(StatsSerializer.LATEST_VERSION);
+        assertThat(new StatsSerializerSnapshot(UNKNOWN_VERSION).getCurrentVersion())
                 .isEqualTo(UNKNOWN_VERSION);
     }
 
@@ -97,15 +98,15 @@ class IpStatsSerializerTest {
     void aRestoredSerializerCarriesTheVersionItWasRestoredWith() {
         // The version comes from the savepoint, not from this code: that is what lets a future
         // layout tell state written today apart from state it writes itself.
-        assertThat(new IpStatsSerializer().getVersion()).isEqualTo(IpStatsSerializer.LATEST_VERSION);
+        assertThat(new StatsSerializer().getVersion()).isEqualTo(StatsSerializer.LATEST_VERSION);
 
-        TypeSerializer<IpStats> restored =
-                new IpStatsSerializerSnapshot(UNKNOWN_VERSION).restoreSerializer();
+        TypeSerializer<Stats> restored =
+                new StatsSerializerSnapshot(UNKNOWN_VERSION).restoreSerializer();
 
-        assertThat(((IpStatsSerializer) restored).getVersion()).isEqualTo(UNKNOWN_VERSION);
+        assertThat(((StatsSerializer) restored).getVersion()).isEqualTo(UNKNOWN_VERSION);
         assertThat(restored)
                 .as("a serializer for another layout is not the current one")
-                .isNotEqualTo(new IpStatsSerializer());
+                .isNotEqualTo(new StatsSerializer());
     }
 
     @Test
@@ -114,28 +115,28 @@ class IpStatsSerializerTest {
         // to come back out of the snapshot intact.
         DataOutputSerializer out = new DataOutputSerializer(64);
         TypeSerializerSnapshot.writeVersionedSnapshot(
-                out, new IpStatsSerializer().snapshotConfiguration());
+                out, new StatsSerializer().snapshotConfiguration());
 
-        TypeSerializerSnapshot<IpStats> readBack =
+        TypeSerializerSnapshot<Stats> readBack =
                 TypeSerializerSnapshot.readVersionedSnapshot(
                         new DataInputDeserializer(out.getCopyOfBuffer()),
                         getClass().getClassLoader());
 
-        assertThat(readBack).isInstanceOf(IpStatsSerializerSnapshot.class);
-        assertThat(readBack.getCurrentVersion()).isEqualTo(IpStatsSerializer.LATEST_VERSION);
-        assertThat(readBack.restoreSerializer()).isEqualTo(new IpStatsSerializer());
+        assertThat(readBack).isInstanceOf(StatsSerializerSnapshot.class);
+        assertThat(readBack.getCurrentVersion()).isEqualTo(StatsSerializer.LATEST_VERSION);
+        assertThat(readBack.restoreSerializer()).isEqualTo(new StatsSerializer());
     }
 
     @Test
     void theSameLayoutIsCompatibleAsIs() {
-        assertThat(resolveAgainst(new IpStatsSerializer().snapshotConfiguration())
+        assertThat(resolveAgainst(new StatsSerializer().snapshotConfiguration())
                         .isCompatibleAsIs())
                 .isTrue();
     }
 
     @Test
     void anotherLayoutVersionIsIncompatible() {
-        assertThat(resolveAgainst(new IpStatsSerializerSnapshot(UNKNOWN_VERSION)).isIncompatible())
+        assertThat(resolveAgainst(new StatsSerializerSnapshot(UNKNOWN_VERSION)).isIncompatible())
                 .isTrue();
     }
 
@@ -145,9 +146,9 @@ class IpStatsSerializerTest {
         // so that the incompatibility is reported rather than throwing while reading the snapshot.
         DataOutputSerializer out = new DataOutputSerializer(32);
         TypeSerializerSnapshot.writeVersionedSnapshot(
-                out, new IpStatsSerializerSnapshot(UNKNOWN_VERSION));
+                out, new StatsSerializerSnapshot(UNKNOWN_VERSION));
 
-        TypeSerializerSnapshot<IpStats> readBack =
+        TypeSerializerSnapshot<Stats> readBack =
                 TypeSerializerSnapshot.readVersionedSnapshot(
                         new DataInputDeserializer(out.getCopyOfBuffer()),
                         getClass().getClassLoader());
@@ -157,10 +158,45 @@ class IpStatsSerializerTest {
     }
 
     @Test
+    void stateWrittenBeforeTheRenameIsStillRestorable() throws Exception {
+        // The whole point of keeping IpStatsSerializerSnapshot: a savepoint taken before the rename
+        // names that class, and both steps of the restore have to get past it.
+        DataOutputSerializer out = new DataOutputSerializer(64);
+        TypeSerializerSnapshot.writeVersionedSnapshot(out, new IpStatsSerializerSnapshot());
+
+        TypeSerializerSnapshot<Stats> readBack =
+                TypeSerializerSnapshot.readVersionedSnapshot(
+                        new DataInputDeserializer(out.getCopyOfBuffer()),
+                        getClass().getClassLoader());
+
+        assertThat(readBack)
+                .as("the class named in the savepoint is still on the classpath")
+                .isInstanceOf(IpStatsSerializerSnapshot.class);
+        assertThat(resolveAgainst(readBack).isCompatibleAsIs())
+                .as("and the current snapshot recognises it, so the state is read as it stands")
+                .isTrue();
+    }
+
+    @Test
+    void theSnapshotFromBeforeTheRenameHandsBackTheRenamedSerializer() {
+        // Nothing records the serializer's own name, so it was free to be renamed with the record.
+        assertThat(new IpStatsSerializerSnapshot(UNKNOWN_VERSION).restoreSerializer())
+                .isEqualTo(new StatsSerializer(UNKNOWN_VERSION));
+    }
+
+    @Test
+    void theSnapshotFromBeforeTheRenameIsStillHeldToTheLayoutVersion() {
+        // Answering to the old name does not make it a free pass: the layout is checked the same
+        // way it is for the current name.
+        assertThat(resolveAgainst(new IpStatsSerializerSnapshot(UNKNOWN_VERSION)).isIncompatible())
+                .isTrue();
+    }
+
+    @Test
     void stateWrittenByThePojoSerializerIsIncompatible() {
         // This is what happens to a savepoint taken before the custom serializer was introduced.
-        TypeSerializerSnapshot<IpStats> pojoSnapshot =
-                TypeInformation.of(IpStats.class)
+        TypeSerializerSnapshot<Stats> pojoSnapshot =
+                TypeInformation.of(Stats.class)
                         .createSerializer(new SerializerConfigImpl())
                         .snapshotConfiguration();
 
@@ -169,20 +205,20 @@ class IpStatsSerializerTest {
 
     @Test
     void serializersAreEqualOnlyWhenTheirVersionMatches() {
-        assertThat(new IpStatsSerializer())
-                .isEqualTo(new IpStatsSerializer())
-                .hasSameHashCodeAs(new IpStatsSerializer());
-        assertThat(new IpStatsSerializer()).isNotEqualTo(new IpStatsSerializer(UNKNOWN_VERSION));
+        assertThat(new StatsSerializer())
+                .isEqualTo(new StatsSerializer())
+                .hasSameHashCodeAs(new StatsSerializer());
+        assertThat(new StatsSerializer()).isNotEqualTo(new StatsSerializer(UNKNOWN_VERSION));
     }
 
     @Test
     void theRecordLengthIsVariable() {
-        assertThat(new IpStatsSerializer().getLength()).isEqualTo(-1);
+        assertThat(new StatsSerializer().getLength()).isEqualTo(-1);
     }
 
     /** Resolves compatibility of state described by that snapshot against the current serializer. */
-    private static org.apache.flink.api.common.typeutils.TypeSerializerSchemaCompatibility<IpStats>
-            resolveAgainst(TypeSerializerSnapshot<IpStats> oldSnapshot) {
-        return new IpStatsSerializer().snapshotConfiguration().resolveSchemaCompatibility(oldSnapshot);
+    private static org.apache.flink.api.common.typeutils.TypeSerializerSchemaCompatibility<Stats>
+            resolveAgainst(TypeSerializerSnapshot<Stats> oldSnapshot) {
+        return new StatsSerializer().snapshotConfiguration().resolveSchemaCompatibility(oldSnapshot);
     }
 }

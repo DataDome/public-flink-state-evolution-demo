@@ -118,7 +118,7 @@ and survives `scripts/stop.sh`.
 
 ## Notes
 
-- **`IpStats` state is written by a hand-rolled serializer.** `state/IpStatsSerializer` replaces
+- **`Stats` state is written by a hand-rolled serializer.** `state/StatsSerializer` replaces
   `PojoSerializer` for that one piece of state. It is not needed — it is there to show how a custom
   serializer is written, and it records a layout version so that a future layout change can be
   detected. See

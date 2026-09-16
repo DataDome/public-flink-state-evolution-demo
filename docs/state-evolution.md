@@ -21,8 +21,8 @@ are easy to miss, and each one fails in its own way when it is missing.
 
 `IpStatsFunction`, keyed by IP address:
 
-- `ValueState<IpStats> ipStats` — the record in `model/IpStats.java`, written by the custom
-  `state/IpStatsSerializer` rather than by `PojoSerializer`. Note that it stores the request and
+- `ValueState<Stats> ipStats` — the record in `model/Stats.java`, written by the custom
+  `state/StatsSerializer` rather than by `PojoSerializer`. Note that it stores the request and
   error *counts*, never the error ratio: a ratio cannot be accumulated, so it is derived on read.
 - `MapState<String, Boolean> seenPaths` — one entry per distinct path seen.
 
@@ -34,7 +34,7 @@ are easy to miss, and each one fails in its own way when it is missing.
 
 ## The custom serializer
 
-`state/IpStatsSerializer` is not necessary — Flink serializes `IpStats` on its own. It is there to
+`state/StatsSerializer` is not necessary — Flink serializes `Stats` on its own. It is there to
 show what has to be written by hand once you take that job over, and it is registered explicitly on
 the state descriptor in `IpStatsFunction`.
 
@@ -45,7 +45,7 @@ still matters: it covers the wire format, not the state.
 ### One version number, carried by the snapshot
 
 The record layout is the serializer's entire configuration, so the layout version *is* the
-snapshot version. `IpStatsSerializerSnapshot.getCurrentVersion()` returns it and `writeSnapshot`
+snapshot version. `StatsSerializerSnapshot.getCurrentVersion()` returns it and `writeSnapshot`
 writes nothing, because Flink already persists that number itself:
 
 ```java
@@ -76,6 +76,7 @@ in Flink 1.19.
 | State was written with | Answer |
 |---|---|
 | the same layout | `compatibleAsIs()` |
+| the same layout, under the snapshot class's previous name | `compatibleAsIs()` |
 | any other layout version | `incompatible()` — only one layout exists so far |
 | a different serializer, e.g. `PojoSerializer` | `incompatible()` |
 
@@ -83,31 +84,56 @@ That last row is worth showing: **introducing this serializer is itself a breaki
 savepoint taken before it existed cannot be restored, because the bytes were laid out by
 `PojoSerializer` and nothing here can read them.
 
+### What a rename costs
+
+`IpStats` was renamed to `Stats`, and its serializer and snapshot with it. Three class names were
+involved and only one of them is written into the savepoint:
+
+| Renamed | In the savepoint | Consequence |
+|---|---|---|
+| the record, `IpStats` → `Stats` | no — the custom serializer writes fields, not a class name | free here. Under `PojoSerializer` it would *not* be: that one records the class name, and this is the rename that would break |
+| the serializer, `IpStatsSerializer` → `StatsSerializer` | no — it is reached through `restoreSerializer()` | free |
+| the snapshot, `IpStatsSerializerSnapshot` → `StatsSerializerSnapshot` | **yes** — `writeVersionedSnapshot` writes `snapshot.getClass().getName()` | breaking |
+
+So `IpStatsSerializerSnapshot` stays on the classpath, reduced to a shim that hands back a
+`StatsSerializer`. Without it the restore fails in the class loader, before any compatibility check
+runs.
+
+Keeping the class is only half of it, and this is the part that is easy to get wrong: Flink then
+hands that old snapshot to `StatsSerializerSnapshot.resolveSchemaCompatibility`, whose `instanceof`
+check no longer matches its own name. The restore fails one step later, with an incompatibility
+instead of a `ClassNotFoundException`. The new snapshot has to answer to **both** names.
+
+The state descriptor name (`"ipStats"`) is a fourth name, and it identifies the state itself rather
+than how it is written. It is left alone: renaming it would leave the accumulated state behind
+under the old name, silently.
+
 ### Adding a field to a custom serializer
 
-Only one layout exists today, version `IpStatsSerializer.VERSION`. The version is persisted
-anyway, and an instance already carries the version it was built for — `VERSION` normally, or
+Only one layout exists today, version `StatsSerializer.LATEST_VERSION`. The version is persisted
+anyway, and an instance already carries the version it was built for — `LATEST_VERSION`
+normally, or
 whatever came out of the savepoint when `restoreSerializer()` built it. That is the groundwork; a
 second layout then needs:
 
-1. The new field on `IpStats`.
-2. `VERSION` bumped to 2, with the previous value kept as a named constant.
+1. The new field on `Stats`.
+2. `LATEST_VERSION` bumped to 2, with the previous value kept as a named constant.
 3. A branch on `version` in `serialize` and `deserialize`: write the new field only for version 2,
    and read it with an explicit default when the instance is reading version 1.
 4. `compatibleAfterMigration()` from `resolveSchemaCompatibility` when the savepoint's version is
    the older one. Flink then reads with `restoreSerializer()` and writes back with the current
    serializer.
 
-`IpStatsSerializerTest` covers each answer in the table above, including that an unknown layout
+`StatsSerializerTest` covers each answer in the table above, including that an unknown layout
 version is reported rather than throwing while the snapshot is read.
 
 ## Candidate changes to demonstrate
 
 To fill in. Rough ordering from "just works" to "does not work":
 
-- **Add a field** to `IpStats` (for example a count of distinct user agents). Supported by
+- **Add a field** to `Stats` (for example a count of distinct user agents). Supported by
   `PojoSerializer`; the new field comes back as its default value for existing keys.
-- **Remove a field** from `IpStats`. Also supported; the old value is dropped on restore.
+- **Remove a field** from `Stats`. Also supported; the old value is dropped on restore.
 - **Add a constant** to the `Metric` enum. Supported by `EnumSerializer`, and worth showing because
   `Metric` lives inside the broadcast state rather than in the keyed state. *Renaming* a constant
   is not supported, which is worth contrasting: the metric names encode their comparison direction
@@ -116,12 +142,15 @@ To fill in. Rough ordering from "just works" to "does not work":
   matches fields by name *and* type, so this reads as "drop one field, add another".
 - **Rename a field**. Indistinguishable from removing one field and adding another, so the
   accumulated value is silently lost — arguably the most dangerous case, because nothing fails.
+- **Rename the record class, its serializer and its snapshot.** Only the snapshot's name is
+  recorded in the savepoint — see above. Worth showing because the one class that has to survive
+  the rename is not the one people expect, and because keeping it is not enough on its own.
 - **Add a field without bumping the layout version.** The serializer silently writes the new field
   and reads state that does not contain it, so deserialization runs off the end of the record or
   reads the following field's bytes. There is no error and the values are simply wrong, which makes
   it the best argument for why the version constant exists.
-- **Replace `MapState<String, Boolean> seenPaths` with a collection field inside `IpStats`.** This
-  is the one that cannot work: a `Set<String>` field makes `IpStats` a generic type, which means
+- **Replace `MapState<String, Boolean> seenPaths` with a collection field inside `Stats`.** This
+  is the one that cannot work: a `Set<String>` field makes `Stats` a generic type, which means
   Kryo, which means no evolution at all. With `pipeline.generic-types: false` the job refuses to
   start, which is the point.
 

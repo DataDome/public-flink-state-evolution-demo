@@ -8,7 +8,7 @@ package co.datadome.demo.flink.model;
  * requires knowing a convention.
  *
  * <p>Rules are evaluated against statistics that were already aggregated, so a rule cannot filter
- * on individual requests: it can only select one of the dimensions {@link IpStats} precomputes.
+ * on individual requests: it can only select one of the dimensions {@link Stats} precomputes.
  *
  * <p>This enum is part of the broadcast state, so it is serialized by Flink's {@code EnumSerializer}.
  * Adding a new constant is a compatible change; renaming or removing one is not.
@@ -36,7 +36,7 @@ public enum Metric {
     DISTINCT_PATHS_AT_MOST;
 
     /** Reads the value of this metric out of that statistics record. */
-    public double extract(IpStats stats) {
+    public double extract(Stats stats) {
         return switch (this) {
             case TOTAL_REQUESTS_AT_LEAST -> stats.getTotalCount();
             case ERROR_RATIO_AT_LEAST -> stats.getErrorRatio();
@@ -50,7 +50,7 @@ public enum Metric {
      * <p>Both directions are inclusive: {@code AT_LEAST} fires on {@code >=} and {@code AT_MOST}
      * on {@code <=}.
      */
-    public boolean isReached(IpStats stats, double threshold) {
+    public boolean isReached(Stats stats, double threshold) {
         return switch (this) {
             case TOTAL_REQUESTS_AT_LEAST -> stats.getTotalCount() >= threshold;
             case ERROR_RATIO_AT_LEAST -> stats.getErrorRatio() >= threshold;

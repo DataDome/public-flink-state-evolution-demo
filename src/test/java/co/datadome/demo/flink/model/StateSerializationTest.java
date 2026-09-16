@@ -17,8 +17,8 @@ import org.junit.jupiter.api.Test;
  * <p>If someone adds a field Flink cannot treat as a POJO field, this test fails here rather than
  * at savepoint restore time.
  *
- * <p>For {@link IpStats} this covers the format used between operators only: its state is written
- * by {@code IpStatsSerializer}, which {@code IpStatsSerializerTest} covers instead.
+ * <p>For {@link Stats} this covers the format used between operators only: its state is written
+ * by {@code StatsSerializer}, which {@code StatsSerializerTest} covers instead.
  */
 class StateSerializationTest {
 
@@ -30,8 +30,8 @@ class StateSerializationTest {
     }
 
     @Test
-    void ipStatsIsSerializedAsAPojo() {
-        assertThat(serializerFor(IpStats.class)).isInstanceOf(PojoSerializer.class);
+    void statsIsSerializedAsAPojo() {
+        assertThat(serializerFor(Stats.class)).isInstanceOf(PojoSerializer.class);
     }
 
     @Test
@@ -57,8 +57,8 @@ class StateSerializationTest {
     }
 
     @Test
-    void everyIpStatsFieldIsCoveredBySerialization() {
-        PojoTypeInfo<IpStats> typeInfo = (PojoTypeInfo<IpStats>) TypeInformation.of(IpStats.class);
+    void everyStatsFieldIsCoveredBySerialization() {
+        PojoTypeInfo<Stats> typeInfo = (PojoTypeInfo<Stats>) TypeInformation.of(Stats.class);
         assertThat(typeInfo.getFieldNames())
                 .containsExactlyInAnyOrder(
                         "ip",

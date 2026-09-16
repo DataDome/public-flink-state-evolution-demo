@@ -1,8 +1,8 @@
 package co.datadome.demo.flink.operator;
 
 import co.datadome.demo.flink.model.HttpRequest;
-import co.datadome.demo.flink.model.IpStats;
-import co.datadome.demo.flink.state.IpStatsSerializer;
+import co.datadome.demo.flink.model.Stats;
+import co.datadome.demo.flink.state.StatsSerializer;
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
@@ -18,27 +18,30 @@ import org.apache.flink.util.Collector;
  * IP address, and are discarded after {@link SessionExpiry#GAP} without activity. Emitting on every
  * request means a rule fires as soon as its threshold is crossed, rather than at a window boundary.
  */
-public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequest, IpStats> {
+public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequest, Stats> {
 
     private static final long serialVersionUID = 1L;
 
     /**
-     * Declared with an explicit {@link IpStatsSerializer} rather than from the type, so that the
+     * Declared with an explicit {@link StatsSerializer} rather than from the type, so that the
      * demo controls the state layout itself.
+     *
+     * <p>The {@code ipStats} name stays as it is: it identifies this state in the savepoint, so
+     * renaming it alongside the record would leave the accumulated state behind.
      */
-    private static final ValueStateDescriptor<IpStats> IP_STATS_DESCRIPTOR =
-            new ValueStateDescriptor<>("ipStats", new IpStatsSerializer());
+    private static final ValueStateDescriptor<Stats> IP_STATS_DESCRIPTOR =
+            new ValueStateDescriptor<>("ipStats", new StatsSerializer());
 
     private static final MapStateDescriptor<String, Boolean> SEEN_PATHS_DESCRIPTOR =
             new MapStateDescriptor<>("seenPaths", String.class, Boolean.class);
 
     /** The accumulated statistics. This is the piece of state the evolution demo revolves around. */
-    private transient ValueState<IpStats> statsState;
+    private transient ValueState<Stats> statsState;
 
     /**
-     * Paths already seen in this session, backing {@link IpStats#getDistinctPathCount()}.
+     * Paths already seen in this session, backing {@link Stats#getDistinctPathCount()}.
      *
-     * <p>Deliberately a {@code MapState} and not a {@code Set} inside {@link IpStats}: a collection
+     * <p>Deliberately a {@code MapState} and not a {@code Set} inside {@link Stats}: a collection
      * field in a POJO falls back to Kryo, which cannot evolve, and the job disables generic types
      * so that such a fallback fails loudly instead of silently.
      */
@@ -51,10 +54,10 @@ public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequ
     }
 
     @Override
-    public void processElement(HttpRequest request, Context ctx, Collector<IpStats> out) throws Exception {
-        IpStats stats = statsState.value();
+    public void processElement(HttpRequest request, Context ctx, Collector<Stats> out) throws Exception {
+        Stats stats = statsState.value();
         if (stats == null) {
-            stats = IpStats.startingWith(request);
+            stats = Stats.startingWith(request);
             // Only registered once per session; onTimer re-registers it for as long as the session
             // stays alive, which keeps this to one timer per key instead of one per request.
             ctx.timerService().registerEventTimeTimer(request.getTimestampMs() + SessionExpiry.GAP_MS);
@@ -71,8 +74,8 @@ public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequ
     }
 
     @Override
-    public void onTimer(long timestamp, OnTimerContext ctx, Collector<IpStats> out) throws Exception {
-        IpStats stats = statsState.value();
+    public void onTimer(long timestamp, OnTimerContext ctx, Collector<Stats> out) throws Exception {
+        Stats stats = statsState.value();
         if (stats == null) {
             return;
         }

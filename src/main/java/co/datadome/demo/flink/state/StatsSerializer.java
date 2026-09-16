@@ -1,23 +1,22 @@
 package co.datadome.demo.flink.state;
 
-import co.datadome.demo.flink.model.IpStats;
-import java.io.IOException;
-
-import lombok.EqualsAndHashCode;
+import co.datadome.demo.flink.model.Stats;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.base.StringSerializer;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 
+import java.io.IOException;
+
 /**
- * Writes {@link IpStats} to and from Flink state by hand.
+ * Writes {@link Stats} to and from Flink state by hand.
  *
- * <p>Flink serializes {@link IpStats} perfectly well on its own, so this class is not needed. It
+ * <p>Flink serializes {@link Stats} perfectly well on its own, so this class is not needed. It
  * exists to show what a custom serializer has to do to stay restorable across versions of a job,
  * which is the part {@code PojoSerializer} otherwise hides.
  */
-public final class IpStatsSerializer extends TypeSerializer<IpStats> {
+public final class StatsSerializer extends TypeSerializer<Stats> {
 
     private static final long serialVersionUID = 1L;
 
@@ -30,11 +29,11 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
      */
     private final int version;
 
-    public IpStatsSerializer() {
+    public StatsSerializer() {
         this(LATEST_VERSION);
     }
 
-    IpStatsSerializer(int version) {
+    StatsSerializer(int version) {
         this.version = version;
     }
 
@@ -45,28 +44,28 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
 
     @Override
     public boolean isImmutableType() {
-        // IpStats is updated in place by the operator.
+        // Stats is updated in place by the operator.
         return false;
     }
 
     @Override
-    public TypeSerializer<IpStats> duplicate() {
+    public TypeSerializer<Stats> duplicate() {
         // Immutable, so it is already safe to share between threads.
         return this;
     }
 
     @Override
-    public IpStats createInstance() {
-        return new IpStats();
+    public Stats createInstance() {
+        return new Stats();
     }
 
     @Override
-    public IpStats copy(IpStats from) {
+    public Stats copy(Stats from) {
         return from.copy();
     }
 
     @Override
-    public IpStats copy(IpStats from, IpStats reuse) {
+    public Stats copy(Stats from, Stats reuse) {
         reuse.setIp(from.getIp());
         reuse.setSessionStartMs(from.getSessionStartMs());
         reuse.setLastSeenMs(from.getLastSeenMs());
@@ -83,7 +82,7 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
     }
 
     @Override
-    public void serialize(IpStats record, DataOutputView target) throws IOException {
+    public void serialize(Stats record, DataOutputView target) throws IOException {
         StringSerializer.INSTANCE.serialize(record.getIp(), target);
         target.writeLong(record.getSessionStartMs());
         target.writeLong(record.getLastSeenMs());
@@ -93,12 +92,12 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
     }
 
     @Override
-    public IpStats deserialize(DataInputView source) throws IOException {
-        return deserialize(new IpStats(), source);
+    public Stats deserialize(DataInputView source) throws IOException {
+        return deserialize(new Stats(), source);
     }
 
     @Override
-    public IpStats deserialize(IpStats reuse, DataInputView source) throws IOException {
+    public Stats deserialize(Stats reuse, DataInputView source) throws IOException {
         reuse.setIp(StringSerializer.INSTANCE.deserialize(source));
         reuse.setSessionStartMs(source.readLong());
         reuse.setLastSeenMs(source.readLong());
@@ -115,13 +114,13 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
     }
 
     @Override
-    public TypeSerializerSnapshot<IpStats> snapshotConfiguration() {
-        return new IpStatsSerializerSnapshot(version);
+    public TypeSerializerSnapshot<Stats> snapshotConfiguration() {
+        return new StatsSerializerSnapshot(version);
     }
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof IpStatsSerializer that && version == that.version;
+        return o instanceof StatsSerializer that && version == that.version;
     }
 
     @Override
@@ -131,6 +130,6 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
 
     @Override
     public String toString() {
-        return "IpStatsSerializer{version=" + version + "}";
+        return "StatsSerializer{version=" + version + "}";
     }
 }

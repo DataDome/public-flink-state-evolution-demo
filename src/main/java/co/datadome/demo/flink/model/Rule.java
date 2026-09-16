@@ -41,7 +41,7 @@ public final class Rule {
     private boolean enabled;
 
     /** Whether that statistics record reaches this rule's threshold. */
-    public boolean matches(IpStats stats) {
+    public boolean matches(Stats stats) {
         if (!enabled || stats.getTotalCount() < minTotalRequests) {
             return false;
         }

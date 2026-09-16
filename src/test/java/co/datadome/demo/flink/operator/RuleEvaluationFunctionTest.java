@@ -2,11 +2,8 @@ package co.datadome.demo.flink.operator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import co.datadome.demo.flink.model.HttpRequest;
-import co.datadome.demo.flink.model.IpStats;
-import co.datadome.demo.flink.model.Metric;
-import co.datadome.demo.flink.model.Rule;
-import co.datadome.demo.flink.model.RuleMatch;
+import co.datadome.demo.flink.model.*;
+
 import java.util.List;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -22,17 +19,17 @@ class RuleEvaluationFunctionTest {
 
     private static final String IP = "10.0.0.1";
 
-    private KeyedBroadcastOperatorTestHarness<String, IpStats, Rule, RuleMatch> harness;
+    private KeyedBroadcastOperatorTestHarness<String, Stats, Rule, RuleMatch> harness;
 
     @BeforeEach
     void setUp() throws Exception {
-        CoBroadcastWithKeyedOperator<String, IpStats, Rule, RuleMatch> operator =
+        CoBroadcastWithKeyedOperator<String, Stats, Rule, RuleMatch> operator =
                 new CoBroadcastWithKeyedOperator<>(
                         new RuleEvaluationFunction(),
                         List.<MapStateDescriptor<?, ?>>of(RuleEvaluationFunction.RULES_DESCRIPTOR));
         harness =
                 new KeyedBroadcastOperatorTestHarness<>(
-                        operator, IpStats::getIp, Types.STRING, 128, 1, 0);
+                        operator, Stats::getIp, Types.STRING, 128, 1, 0);
         harness.open();
     }
 
@@ -42,23 +39,23 @@ class RuleEvaluationFunctionTest {
     }
 
     /** Builds statistics for that IP address with that many total requests. */
-    private static IpStats stats(String ip, long sessionStartMs, long totalCount) {
-        IpStats stats = IpStats.startingWith(new HttpRequest(sessionStartMs, ip, "/a", "curl/8", 200));
+    private static Stats stats(String ip, long sessionStartMs, long totalCount) {
+        Stats stats = Stats.startingWith(new HttpRequest(sessionStartMs, ip, "/a", "curl/8", 200));
         stats.setTotalCount(totalCount);
         stats.setLastSeenMs(sessionStartMs + totalCount);
         return stats;
     }
 
     /** Builds statistics with that error ratio, expressed as a count of failures out of the total. */
-    private static IpStats statsWithErrors(long totalCount, long errorCount) {
-        IpStats stats = stats(IP, 1_000, totalCount);
+    private static Stats statsWithErrors(long totalCount, long errorCount) {
+        Stats stats = stats(IP, 1_000, totalCount);
         stats.setErrorCount(errorCount);
         return stats;
     }
 
     /** Builds statistics with that many distinct paths. */
-    private static IpStats statsWithPaths(long totalCount, int distinctPathCount) {
-        IpStats stats = stats(IP, 1_000, totalCount);
+    private static Stats statsWithPaths(long totalCount, int distinctPathCount) {
+        Stats stats = stats(IP, 1_000, totalCount);
         stats.setDistinctPathCount(distinctPathCount);
         return stats;
     }
@@ -67,7 +64,7 @@ class RuleEvaluationFunctionTest {
         harness.processBroadcastElement(new StreamRecord<>(rule, 0L));
     }
 
-    private void sendStats(IpStats stats) throws Exception {
+    private void sendStats(Stats stats) throws Exception {
         harness.processElement(new StreamRecord<>(stats, stats.getLastSeenMs()));
     }
 
@@ -202,7 +199,7 @@ class RuleEvaluationFunctionTest {
         sendRule(new Rule("r1", Metric.TOTAL_REQUESTS_AT_LEAST, 10, 0, true));
         sendStats(stats(IP, 1_000, 10));
 
-        IpStats later = stats(IP, 1_000, 11);
+        Stats later = stats(IP, 1_000, 11);
         later.setLastSeenMs(SessionExpiry.GAP_MS);
         sendStats(later);
 

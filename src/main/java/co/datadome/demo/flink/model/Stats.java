@@ -25,7 +25,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-public final class IpStats {
+public final class Stats {
 
     private String ip;
 
@@ -45,8 +45,8 @@ public final class IpStats {
     private int distinctPathCount;
 
     /** Creates the statistics for a session starting with that request. */
-    public static IpStats startingWith(HttpRequest request) {
-        IpStats stats = new IpStats();
+    public static Stats startingWith(HttpRequest request) {
+        Stats stats = new Stats();
         stats.ip = request.getIp();
         stats.sessionStartMs = request.getTimestampMs();
         stats.lastSeenMs = request.getTimestampMs();
@@ -87,7 +87,7 @@ public final class IpStats {
      *
      * <p>Goes through the builder so that it stays correct if a field is added or reordered.
      */
-    public IpStats copy() {
+    public Stats copy() {
         return toBuilder().build();
     }
 }

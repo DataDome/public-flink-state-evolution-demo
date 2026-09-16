@@ -1,9 +1,9 @@
 package co.datadome.demo.flink;
 
 import co.datadome.demo.flink.model.HttpRequest;
-import co.datadome.demo.flink.model.IpStats;
 import co.datadome.demo.flink.model.Rule;
 import co.datadome.demo.flink.model.RuleMatch;
+import co.datadome.demo.flink.model.Stats;
 import co.datadome.demo.flink.operator.IpStatsFunction;
 import co.datadome.demo.flink.operator.RuleEvaluationFunction;
 import co.datadome.demo.flink.serde.JsonDeserializer;
@@ -147,7 +147,7 @@ public final class BehavioralAnalysisJob {
 
         WatermarkStrategy<Rule> rulesWatermarks = WatermarkStrategy.<Rule>noWatermarks().withIdleness(RULES_IDLENESS);
 
-        DataStream<IpStats> stats =
+        DataStream<Stats> stats =
                 env.fromSource(requestsSource, requestsWatermarks, "HTTP requests")
                         .uid("source-http-requests")
                         .keyBy(HttpRequest::getIp)
@@ -161,7 +161,7 @@ public final class BehavioralAnalysisJob {
                         .broadcast(RuleEvaluationFunction.RULES_DESCRIPTOR);
 
         DataStream<RuleMatch> matches =
-                stats.keyBy(IpStats::getIp)
+                stats.keyBy(Stats::getIp)
                         .connect(rules)
                         .process(new RuleEvaluationFunction())
                         .uid("rule-evaluation")

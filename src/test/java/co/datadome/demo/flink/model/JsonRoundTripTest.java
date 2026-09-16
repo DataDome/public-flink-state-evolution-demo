@@ -69,7 +69,7 @@ class JsonRoundTripTest {
         RuleMatch match =
                 RuleMatch.of(
                         new Rule("r1", Metric.TOTAL_REQUESTS_AT_LEAST, 10, 0, true),
-                        IpStats.startingWith(new HttpRequest(1_000, "10.0.0.1", "/a", "curl/8", 200)));
+                        Stats.startingWith(new HttpRequest(1_000, "10.0.0.1", "/a", "curl/8", 200)));
         assertThat(read(RuleMatch.class, new String(write(match), StandardCharsets.UTF_8)))
                 .isEqualTo(match);
     }

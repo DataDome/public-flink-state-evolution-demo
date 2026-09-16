@@ -1,6 +1,6 @@
 package co.datadome.demo.flink.operator;
 
-import co.datadome.demo.flink.model.IpStats;
+import co.datadome.demo.flink.model.Stats;
 import co.datadome.demo.flink.model.Rule;
 import co.datadome.demo.flink.model.RuleMatch;
 
@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  * <p>Rules arrive on the broadcast side and are held in broadcast state, keyed by rule id. The
  * statistics arrive on the keyed side. A rule fires at most once per session per IP address.
  */
-public final class RuleEvaluationFunction extends KeyedBroadcastProcessFunction<String, IpStats, Rule, RuleMatch> {
+public final class RuleEvaluationFunction extends KeyedBroadcastProcessFunction<String, Stats, Rule, RuleMatch> {
 
     private static final long serialVersionUID = 1L;
 
@@ -66,7 +66,7 @@ public final class RuleEvaluationFunction extends KeyedBroadcastProcessFunction<
     }
 
     @Override
-    public void processElement(IpStats stats, ReadOnlyContext ctx, Collector<RuleMatch> out) throws Exception {
+    public void processElement(Stats stats, ReadOnlyContext ctx, Collector<RuleMatch> out) throws Exception {
         Long knownSessionStart = sessionStartState.value();
         if (knownSessionStart == null) {
             // Only registered once per session; onTimer re-registers it while the session is alive.
