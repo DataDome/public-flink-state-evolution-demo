@@ -128,6 +128,43 @@ class IpStatsSerializerTest {
     }
 
     @Test
+    void aRecordWrittenWithThePreviousLayoutSurvivesARoundTrip() throws Exception {
+        // The restored serializer is the only thing that can read a version 1 record, and it has to
+        // write it back in the same layout so that copy() through the views stays byte for byte.
+        IpStatsSerializer previous = new IpStatsSerializer(IpStatsSerializer.PREVIOUS_VERSION);
+
+        assertThat(read(previous, write(previous, sample()))).isEqualTo(sample());
+    }
+
+    @Test
+    void thePreviousLayoutSpendsFourMoreBytesOnTheErrorCount() throws Exception {
+        // Nothing else moved, so the whole difference between the two layouts is errorCount going
+        // from a long to an int.
+        byte[] previous = write(new IpStatsSerializer(IpStatsSerializer.PREVIOUS_VERSION), sample());
+
+        assertThat(write(new IpStatsSerializer(), sample())).hasSize(previous.length - 4);
+    }
+
+    @Test
+    void thePreviousLayoutIsCompatibleAfterMigration() {
+        // Flink reads the old records with restoreSerializer() and writes them back with the
+        // current one, which is what rewrites the error counts as ints.
+        assertThat(resolveAgainst(
+                                new IpStatsSerializerSnapshot(IpStatsSerializer.PREVIOUS_VERSION))
+                        .isCompatibleAfterMigration())
+                .isTrue();
+    }
+
+    @Test
+    void theCurrentLayoutIsNotReadableByThePreviousOne() {
+        // Downgrading a job is not a migration Flink offers, and the shorter record proves why.
+        assertThat(new IpStatsSerializerSnapshot(IpStatsSerializer.PREVIOUS_VERSION)
+                        .resolveSchemaCompatibility(new IpStatsSerializer().snapshotConfiguration())
+                        .isIncompatible())
+                .isTrue();
+    }
+
+    @Test
     void theSameLayoutIsCompatibleAsIs() {
         assertThat(resolveAgainst(new IpStatsSerializer().snapshotConfiguration())
                         .isCompatibleAsIs())
