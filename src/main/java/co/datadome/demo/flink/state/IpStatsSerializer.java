@@ -1,11 +1,13 @@
 package co.datadome.demo.flink.state;
 
 import co.datadome.demo.flink.model.IpStats;
-import java.io.IOException;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
+import org.apache.flink.api.common.typeutils.base.StringSerializer;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
+
+import java.io.IOException;
 
 /**
  * Writes {@link IpStats} to and from Flink state by hand.
@@ -75,13 +77,12 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
 
     @Override
     public int getLength() {
-        // Variable: the IP address is a string.
-        return -1;
+        return -1; // Variable: the IP address is a string.
     }
 
     @Override
     public void serialize(IpStats record, DataOutputView target) throws IOException {
-        writeNullableString(record.getIp(), target);
+        StringSerializer.INSTANCE.serialize(record.getIp(), target);
         target.writeLong(record.getSessionStartMs());
         target.writeLong(record.getLastSeenMs());
         target.writeLong(record.getTotalCount());
@@ -96,7 +97,7 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
 
     @Override
     public IpStats deserialize(IpStats reuse, DataInputView source) throws IOException {
-        reuse.setIp(readNullableString(source));
+        reuse.setIp(StringSerializer.INSTANCE.deserialize(source));
         reuse.setSessionStartMs(source.readLong());
         reuse.setLastSeenMs(source.readLong());
         reuse.setTotalCount(source.readLong());
@@ -131,15 +132,4 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
         return "IpStatsSerializer{version=" + version + "}";
     }
 
-    /** {@code DataOutputView} has no null-aware string method, so presence is written explicitly. */
-    private static void writeNullableString(String value, DataOutputView target) throws IOException {
-        target.writeBoolean(value != null);
-        if (value != null) {
-            target.writeUTF(value);
-        }
-    }
-
-    private static String readNullableString(DataInputView source) throws IOException {
-        return source.readBoolean() ? source.readUTF() : null;
-    }
 }

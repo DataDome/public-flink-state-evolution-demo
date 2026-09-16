@@ -42,40 +42,47 @@ It only governs **state**. Records travelling between the two operators are seri
 type information, so those still go through `PojoSerializer`. That is why `StateSerializationTest`
 still matters: it covers the wire format, not the state.
 
-### One version number, carried by the snapshot
+What it costs is the evolution that came for free. `PojoSerializer` carries per-field metadata, and
+that metadata is exactly what lets it match the fields in a savepoint against the fields in the
+class. Writing the fields as primitives in a fixed order leaves nothing to match against: adding,
+removing or reordering one would keep reading old bytes with the new layout, and the fields would
+simply shift. What makes that detectable again is a version number.
 
-The record layout is the serializer's entire configuration, so the layout version *is* the
-snapshot version. `IpStatsSerializerSnapshot.getCurrentVersion()` returns it and `writeSnapshot`
-writes nothing, because Flink already persists that number itself:
+### Two versions, kept apart
+
+| | What it versions | Bumped when |
+|---|---|---|
+| `getCurrentVersion()`, i.e. `SNAPSHOT_VERSION` | the snapshot's own format, i.e. the bytes `writeSnapshot` writes | the snapshot itself starts writing something different |
+| the `int` inside `writeSnapshot` | the layout of `IpStats` on disk | a field is added, removed or reordered |
+
+Flink persists the first one itself, and allow us to write our payload:
 
 ```java
 static void writeVersionedSnapshot(DataOutputView out, TypeSerializerSnapshot<?> snapshot) {
     out.writeUTF(snapshot.getClass().getName());
-    out.writeInt(snapshot.getCurrentVersion());   // <- the layout version
-    snapshot.writeSnapshot(out);                  // <- nothing left to write
+    out.writeInt(snapshot.getCurrentVersion());   // <- SNAPSHOT_VERSION
+    snapshot.writeSnapshot(out);                  // <- the layout version, as a payload of its own
 }
 ```
 
-On restore Flink reads that int back and hands it to `readSnapshot` as `readVersion`. Nothing is
-written per record, so the version costs no bytes in state.
+On restore, Flink reads that int back and hands it to `readSnapshot` as `readVersion`, and the layout
+version comes out of the payload. Nothing is written per record, so both cost 8 bytes in state.
 
-`writeSnapshot` only earns its keep once a serializer has configuration beyond the layout — nested
-serializer snapshots, registered classes, and so on, which is what `PojoSerializerSnapshot` and
-`KryoSerializerSnapshot` put there.
-
-An unknown version is deliberately *not* rejected in `readSnapshot`: throwing there fails the
-restore with an IO error, whereas accepting it lets `resolveSchemaCompatibility` report a proper
-incompatibility.
+The two versions are also rejected differently, which is the point of separating them. An unknown
+`readVersion` means the savepoint was written by a newer version of `IpStatsSerializerSnapshot`
+than the one running, and there is no way to parse what follows: `readSnapshot` throws. An unknown
+*layout* version parses fine, so it is deliberately accepted and left to
+`resolveSchemaCompatibility`, which reports a proper incompatibility instead of an IO error.
 
 ### What it answers on restore
 
 `resolveSchemaCompatibility` is called on the snapshot of the serializer the job wants to use
 *now*, with the snapshot from the savepoint as the argument. Note the direction — it was reversed
-in Flink 1.19.
+in Flink 1.19 by FLIP-263.
 
 | State was written with | Answer |
 |---|---|
-| the same layout | `compatibleAsIs()` |
+| the same layout version | `compatibleAsIs()` |
 | any other layout version | `incompatible()` — only one layout exists so far |
 | a different serializer, e.g. `PojoSerializer` | `incompatible()` |
 
@@ -85,18 +92,21 @@ savepoint taken before it existed cannot be restored, because the bytes were lai
 
 ### Adding a field to a custom serializer
 
-Only one layout exists today, version `IpStatsSerializer.VERSION`. The version is persisted
-anyway, and an instance already carries the version it was built for — `VERSION` normally, or
-whatever came out of the savepoint when `restoreSerializer()` built it. That is the groundwork; a
-second layout then needs:
+Only one layout exists today, version `IpStatsSerializer.LATEST_VERSION`. The version is persisted
+anyway, and an instance already carries the version it was built for — `LATEST_VERSION` normally,
+or whatever came out of the savepoint when `restoreSerializer()` built it. That is the groundwork;
+a second layout then needs:
 
 1. The new field on `IpStats`.
-2. `VERSION` bumped to 2, with the previous value kept as a named constant.
+2. `LATEST_VERSION` bumped to 2, with the previous value kept as a named constant.
 3. A branch on `version` in `serialize` and `deserialize`: write the new field only for version 2,
    and read it with an explicit default when the instance is reading version 1.
 4. `compatibleAfterMigration()` from `resolveSchemaCompatibility` when the savepoint's version is
    the older one. Flink then reads with `restoreSerializer()` and writes back with the current
    serializer.
+
+Forget step 4 and the restore fails loudly, which is what writing the version down buys. Forget
+step 3, and it does not: the version says the bytes are readable, and the code reads them wrong.
 
 `IpStatsSerializerTest` covers each answer in the table above, including that an unknown layout
 version is reported rather than throwing while the snapshot is read.

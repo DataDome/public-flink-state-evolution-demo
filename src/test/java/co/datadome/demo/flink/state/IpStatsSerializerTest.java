@@ -1,6 +1,7 @@
 package co.datadome.demo.flink.state;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import co.datadome.demo.flink.model.IpStats;
 import java.io.IOException;
@@ -16,6 +17,12 @@ class IpStatsSerializerTest {
 
     /** A layout version this job does not have, standing in for a future or foreign one. */
     private static final int UNKNOWN_VERSION = 99;
+
+    /**
+     * Version of the snapshot's own format, spelled out rather than read from the class: it is
+     * what a savepoint written today contains, so changing it has to show up as a test change.
+     */
+    private static final int SNAPSHOT_VERSION = 1;
 
     private static IpStats sample() {
         return IpStats.builder()
@@ -75,6 +82,18 @@ class IpStatsSerializerTest {
     }
 
     @Test
+    void copyDoesNotAliasTheOriginal() {
+        // The operator keeps mutating the record it holds in state, so a copy that shared anything
+        // with it would keep changing after the fact.
+        IpStats original = sample();
+
+        IpStats copy = new IpStatsSerializer().copy(original);
+        original.setTotalCount(original.getTotalCount() + 1);
+
+        assertThat(copy.getTotalCount()).isEqualTo(sample().getTotalCount());
+    }
+
+    @Test
     void copyingThroughTheViewsPreservesTheBytes() throws Exception {
         IpStatsSerializer serializer = new IpStatsSerializer();
         byte[] original = write(serializer, sample());
@@ -86,11 +105,13 @@ class IpStatsSerializerTest {
     }
 
     @Test
-    void theSnapshotReportsTheSerializersVersion() {
+    void theSnapshotVersionsItsOwnFormatAndNotTheLayout() {
+        // What Flink versions is the snapshot's format. The layout version rides inside it, so the
+        // two move independently: a snapshot describing any layout still reports its own version.
         assertThat(new IpStatsSerializer().snapshotConfiguration().getCurrentVersion())
-                .isEqualTo(IpStatsSerializer.LATEST_VERSION);
+                .isEqualTo(SNAPSHOT_VERSION);
         assertThat(new IpStatsSerializerSnapshot(UNKNOWN_VERSION).getCurrentVersion())
-                .isEqualTo(UNKNOWN_VERSION);
+                .isEqualTo(SNAPSHOT_VERSION);
     }
 
     @Test
@@ -122,8 +143,22 @@ class IpStatsSerializerTest {
                         getClass().getClassLoader());
 
         assertThat(readBack).isInstanceOf(IpStatsSerializerSnapshot.class);
-        assertThat(readBack.getCurrentVersion()).isEqualTo(IpStatsSerializer.LATEST_VERSION);
+        assertThat(readBack.getCurrentVersion()).isEqualTo(SNAPSHOT_VERSION);
         assertThat(readBack.restoreSerializer()).isEqualTo(new IpStatsSerializer());
+    }
+
+    @Test
+    void aNewerSnapshotFormatIsRejectedRatherThanMisread() {
+        // The counterpart of the test above: an unknown layout version is data this code can still
+        // parse and report on, an unknown snapshot format is not.
+        DataInputDeserializer nothingLeftToRead = new DataInputDeserializer(new byte[0]);
+
+        assertThatThrownBy(
+                        () ->
+                                new IpStatsSerializerSnapshot()
+                                        .readSnapshot(SNAPSHOT_VERSION + 1, nothingLeftToRead, null))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("Unsupported snapshot version");
     }
 
     @Test
@@ -152,7 +187,7 @@ class IpStatsSerializerTest {
                         new DataInputDeserializer(out.getCopyOfBuffer()),
                         getClass().getClassLoader());
 
-        assertThat(readBack.getCurrentVersion()).isEqualTo(UNKNOWN_VERSION);
+        assertThat(readBack.restoreSerializer()).isEqualTo(new IpStatsSerializer(UNKNOWN_VERSION));
         assertThat(resolveAgainst(readBack).isIncompatible()).isTrue();
     }
 
