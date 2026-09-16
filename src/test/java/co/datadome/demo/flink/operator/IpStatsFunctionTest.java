@@ -1,7 +1,7 @@
 package co.datadome.demo.flink.operator;
 
 import co.datadome.demo.flink.model.HttpRequest;
-import co.datadome.demo.flink.model.IpStats;
+import co.datadome.demo.flink.model.Stats;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.runtime.checkpoint.OperatorSubtaskState;
 import org.apache.flink.streaming.api.operators.KeyedProcessOperator;
@@ -20,7 +20,7 @@ class IpStatsFunctionTest {
 
     private static final String IP = "10.0.0.1";
 
-    private KeyedOneInputStreamOperatorTestHarness<String, HttpRequest, IpStats> harness;
+    private KeyedOneInputStreamOperatorTestHarness<String, HttpRequest, Stats> harness;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -28,7 +28,7 @@ class IpStatsFunctionTest {
         harness.open();
     }
 
-    private static KeyedOneInputStreamOperatorTestHarness<String, HttpRequest, IpStats> newHarness()
+    private static KeyedOneInputStreamOperatorTestHarness<String, HttpRequest, Stats> newHarness()
             throws Exception {
         return new KeyedOneInputStreamOperatorTestHarness<>(
                 new KeyedProcessOperator<>(new IpStatsFunction()),
@@ -47,9 +47,9 @@ class IpStatsFunctionTest {
                         new HttpRequest(timestampMs, ip, path, "curl/8", statusCode), timestampMs));
     }
 
-    private List<IpStats> emitted() {
+    private List<Stats> emitted() {
         return harness.extractOutputStreamRecords().stream()
-                .map(record -> (IpStats) record.getValue())
+                .map(record -> (Stats) record.getValue())
                 .toList();
     }
 
@@ -60,7 +60,7 @@ class IpStatsFunctionTest {
         send(3_000, IP, "/search", 200);
 
         assertThat(emitted()).hasSize(3);
-        assertThat(emitted()).extracting(IpStats::getTotalCount).containsExactly(1L, 2L, 3L);
+        assertThat(emitted()).extracting(Stats::getTotalCount).containsExactly(1L, 2L, 3L);
     }
 
     @Test
@@ -69,7 +69,7 @@ class IpStatsFunctionTest {
         send(2_000, IP, "/login", 403);
         send(3_000, IP, "/login", 500);
 
-        IpStats last = emitted().getLast();
+        Stats last = emitted().getLast();
         assertThat(last.getTotalCount()).isEqualTo(3);
         assertThat(last.getErrorCount()).isEqualTo(2);
     }
@@ -81,7 +81,7 @@ class IpStatsFunctionTest {
         send(3_000, IP, "/search", 200);
         send(4_000, IP, "/login", 200);
 
-        assertThat(emitted()).extracting(IpStats::getDistinctPathCount).containsExactly(1, 1, 2, 2);
+        assertThat(emitted()).extracting(Stats::getDistinctPathCount).containsExactly(1, 1, 2, 2);
     }
 
     @Test
@@ -89,7 +89,7 @@ class IpStatsFunctionTest {
         send(1_000, IP, "/a", 200);
         send(7_000, IP, "/b", 200);
 
-        IpStats last = emitted().getLast();
+        Stats last = emitted().getLast();
         assertThat(last.getIp()).isEqualTo(IP);
         assertThat(last.getSessionStartMs()).isEqualTo(1_000);
         assertThat(last.getLastSeenMs()).isEqualTo(7_000);
@@ -101,7 +101,7 @@ class IpStatsFunctionTest {
         send(2_000, "10.0.0.2", "/a", 200);
         send(3_000, "10.0.0.1", "/b", 200);
 
-        assertThat(emitted()).extracting(IpStats::getIp, IpStats::getTotalCount)
+        assertThat(emitted()).extracting(Stats::getIp, Stats::getTotalCount)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple("10.0.0.1", 1L),
                         org.assertj.core.groups.Tuple.tuple("10.0.0.2", 1L),
@@ -145,7 +145,7 @@ class IpStatsFunctionTest {
         long later = 5 * SessionExpiration.GAP_MS;
         send(later, IP, "/a", 200);
 
-        IpStats fresh = emitted().getLast();
+        Stats fresh = emitted().getLast();
         assertThat(fresh.getTotalCount()).isEqualTo(1);
         assertThat(fresh.getDistinctPathCount()).isEqualTo(1);
         assertThat(fresh.getSessionStartMs()).isEqualTo(later);
@@ -158,14 +158,14 @@ class IpStatsFunctionTest {
         OperatorSubtaskState snapshot = harness.snapshot(1L, 1L);
         harness.close();
 
-        // A fresh operator, reading the state back through IpStatsSerializer.
+        // A fresh operator, reading the state back through StatsSerializer.
         harness = newHarness();
         harness.initializeState(snapshot);
         harness.open();
 
         send(3_000, IP, "/login", 200);
 
-        IpStats restored = emitted().getLast();
+        Stats restored = emitted().getLast();
         assertThat(restored.getSessionStartMs())
                 .as("the session continues rather than starting again")
                 .isEqualTo(1_000);

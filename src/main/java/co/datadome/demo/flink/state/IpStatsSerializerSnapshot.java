@@ -1,6 +1,6 @@
 package co.datadome.demo.flink.state;
 
-import co.datadome.demo.flink.model.IpStats;
+import co.datadome.demo.flink.model.Stats;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.TypeSerializerSchemaCompatibility;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
@@ -8,13 +8,16 @@ import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 
 /**
- * Serialized state of the type-serializer itself.
+ * The name {@link StatsSerializerSnapshot} went by before {@code IpStats} was renamed to {@link Stats}. Required so
+ * that Flink can reflectively instantiate the snapshot from the class-name stored in a savepoint from the previous
+ * version.
+ *
+ * <p>It is recognized in {@link StatsSerializerSnapshot} as a compatible snapshot, as the layout is unchanged.
  */
-public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<IpStats> {
+public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<Stats> {
 
     /**
-     * Version of the serialized layout this snapshot describes, passed by the {@link IpStatsSerializer}, or read from
-     * the savepoint when restoring the state.
+     * Version of the serialized layout this snapshot describes, as written before the rename.
      */
     private int version;
 
@@ -22,7 +25,7 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
      * Required on deserialization: Flink instantiates this reflectively before calling {@link #readSnapshot}.
      */
     public IpStatsSerializerSnapshot() {
-        this(IpStatsSerializer.LATEST_VERSION);
+        this(StatsSerializer.LATEST_VERSION);
     }
 
     /**
@@ -39,7 +42,7 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
 
     @Override
     public void writeSnapshot(DataOutputView out) {
-        // Nothing to do: IpStatsSerializer doesn't have any state apart from the version, directly handled by Flink.
+        // Only ever reached if Flink is asked to write this snapshot back, which no serializer does anymore.
     }
 
     @Override
@@ -49,32 +52,20 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
         version = readVersion;
     }
 
+    /**
+     * Builds a serializer under its current name.
+     */
     @Override
-    public TypeSerializer<IpStats> restoreSerializer() {
-        return new IpStatsSerializer(version);
+    public TypeSerializer<Stats> restoreSerializer() {
+        return new StatsSerializer(version);
     }
 
     /**
-     * Decides whether state described by that snapshot can be read by the serializer this snapshot
-     * belongs to.
-     *
-     * <p>Note the direction: this is the snapshot of the serializer the job wants to use now, and
-     * that argument is the one restored from the savepoint.
+     * Not reached in practice: Flink calls this on the new snapshot.
      */
     @Override
-    public TypeSerializerSchemaCompatibility<IpStats> resolveSchemaCompatibility(TypeSerializerSnapshot<IpStats> old) {
-
-        if (old instanceof IpStatsSerializerSnapshot that) {
-            if (that.version == version) {
-                return TypeSerializerSchemaCompatibility.compatibleAsIs();
-            } else {
-                // Only one layout is known, so any other version is incompatible
-                return TypeSerializerSchemaCompatibility.incompatible();
-            }
-        }
-
-        // The state was written by a serializer we don't recognize, and can't read.
-        return TypeSerializerSchemaCompatibility.incompatible();
+    public TypeSerializerSchemaCompatibility<Stats> resolveSchemaCompatibility(TypeSerializerSnapshot<Stats> old) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

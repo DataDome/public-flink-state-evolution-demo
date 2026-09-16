@@ -31,7 +31,7 @@ public final class RuleMatch {
     /**
      * Creates the result of that rule firing on those statistics.
      */
-    public static RuleMatch of(Rule rule, IpStats stats) {
+    public static RuleMatch of(Rule rule, Stats stats) {
         return new RuleMatch(
                 rule.getRuleId(),
                 stats.getIp(),

@@ -29,7 +29,7 @@ public enum Metric {
     /**
      * Reads the value of this metric out of that statistics record.
      */
-    public double extract(IpStats stats) {
+    public double extract(Stats stats) {
         return switch (this) {
             case TOTAL_REQUESTS_AT_LEAST -> stats.getTotalCount();
             case ERROR_RATIO_AT_LEAST -> stats.getErrorRatio();
@@ -40,7 +40,7 @@ public enum Metric {
     /**
      * Whether this metric fires on those stats for that threshold.
      */
-    public boolean isReached(IpStats stats, double threshold) {
+    public boolean isReached(Stats stats, double threshold) {
         return switch (this) {
             case TOTAL_REQUESTS_AT_LEAST -> stats.getTotalCount() >= threshold;
             case ERROR_RATIO_AT_LEAST -> stats.getErrorRatio() >= threshold;
