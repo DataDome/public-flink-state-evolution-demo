@@ -58,12 +58,6 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
         ipStatsVersion = in.readInt();
     }
 
-    /** Builds a serializer that handles the layout this snapshot describes. */
-    @Override
-    public TypeSerializer<IpStats> restoreSerializer() {
-        return new IpStatsSerializer(ipStatsVersion);
-    }
-
     /**
      * Decides whether state described by that snapshot can be read by the serializer this snapshot
      * belongs to.
@@ -88,6 +82,12 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
         // Only one layout exists so far. Once an older one does, it is recognized by its version
         // here and answered with compatibleAfterMigration().
         return TypeSerializerSchemaCompatibility.incompatible();
+    }
+
+    /** Builds a serializer that handles the layout this snapshot describes. */
+    @Override
+    public TypeSerializer<IpStats> restoreSerializer() {
+        return new IpStatsSerializer(ipStatsVersion);
     }
 
     @Override
