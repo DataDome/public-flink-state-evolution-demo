@@ -76,27 +76,31 @@ in Flink 1.19.
 | State was written with | Answer |
 |---|---|
 | the same layout | `compatibleAsIs()` |
-| any other layout version | `incompatible()` — only one layout exists so far |
+| layout 1, being read by layout 2 | `compatibleAfterMigration()` |
+| any other layout version, including layout 2 being read by layout 1 | `incompatible()` |
 | a different serializer, e.g. `PojoSerializer` | `incompatible()` |
 
 That last row is worth showing: **introducing this serializer is itself a breaking change.** A
 savepoint taken before it existed cannot be restored, because the bytes were laid out by
 `PojoSerializer` and nothing here can read them.
 
-### Adding a field to a custom serializer
+### Changing a field's type in a custom serializer
 
-Only one layout exists today, version `IpStatsSerializer.VERSION`. The version is persisted
-anyway, and an instance already carries the version it was built for — `VERSION` normally, or
-whatever came out of the savepoint when `restoreSerializer()` built it. That is the groundwork; a
-second layout then needs:
+Layout 2 is layout 1 with `errorCount` written as an int instead of a long. This is the change
+`PojoSerializer` cannot make — it matches fields by name *and* type, so under it the same edit
+reads as one field dropped and another added, and the accumulated count is silently lost. Written
+by hand it is four steps:
 
-1. The new field on `IpStats`.
-2. `VERSION` bumped to 2, with the previous value kept as a named constant.
-3. A branch on `version` in `serialize` and `deserialize`: write the new field only for version 2,
-   and read it with an explicit default when the instance is reading version 1.
+1. The new type on `IpStats`.
+2. `LATEST_VERSION` bumped to 2, with the previous value kept as `PREVIOUS_VERSION`.
+3. A branch on `version` in `serialize` and `deserialize`, so that an instance restored for layout
+   1 still reads a long there.
 4. `compatibleAfterMigration()` from `resolveSchemaCompatibility` when the savepoint's version is
    the older one. Flink then reads with `restoreSerializer()` and writes back with the current
-   serializer.
+   serializer, which is what rewrites the counts.
+
+Note the direction, too: layout 1 reading state written by layout 2 is `incompatible()`. Rolling a
+job back to the previous version is not a migration Flink offers.
 
 `IpStatsSerializerTest` covers each answer in the table above, including that an unknown layout
 version is reported rather than throwing while the snapshot is read.

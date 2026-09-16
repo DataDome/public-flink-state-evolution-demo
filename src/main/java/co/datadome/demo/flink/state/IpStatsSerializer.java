@@ -1,14 +1,13 @@
 package co.datadome.demo.flink.state;
 
 import co.datadome.demo.flink.model.IpStats;
-import java.io.IOException;
-
-import lombok.EqualsAndHashCode;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.base.StringSerializer;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
+
+import java.io.IOException;
 
 /**
  * Writes {@link IpStats} to and from Flink state by hand.
@@ -16,13 +15,23 @@ import org.apache.flink.core.memory.DataOutputView;
  * <p>Flink serializes {@link IpStats} perfectly well on its own, so this class is not needed. It
  * exists to show what a custom serializer has to do to stay restorable across versions of a job,
  * which is the part {@code PojoSerializer} otherwise hides.
+ *
+ * <p>Two layouts exist, and an instance handles exactly one of them: {@link #LATEST_VERSION} for a
+ * job writing state now, or {@link #PREVIOUS_VERSION} for an instance built by
+ * {@link IpStatsSerializerSnapshot#restoreSerializer()} to read a savepoint written before
+ * {@code errorCount} became an int. That type change is what the two layouts differ by, and it is
+ * not something {@code PojoSerializer} can evolve: it matches fields by name and type, so the same
+ * change under it reads as one field dropped and another added.
  */
 public final class IpStatsSerializer extends TypeSerializer<IpStats> {
 
     private static final long serialVersionUID = 1L;
 
+    /** Version 1 wrote {@code errorCount} as a long; version 2 writes it as an int. */
+    public static final int PREVIOUS_VERSION = 1;
+
     /** Version of the record layout this code reads and writes. */
-    public static final int LATEST_VERSION = 1;
+    public static final int LATEST_VERSION = 2;
 
     /**
      * Version of the record layout this instance handles: {@link #LATEST_VERSION}, or the version read
@@ -88,7 +97,11 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
         target.writeLong(record.getSessionStartMs());
         target.writeLong(record.getLastSeenMs());
         target.writeLong(record.getTotalCount());
-        target.writeLong(record.getErrorCount());
+        if (version == PREVIOUS_VERSION) {
+            target.writeLong(record.getErrorCount());
+        } else {
+            target.writeInt(record.getErrorCount());
+        }
         target.writeInt(record.getDistinctPathCount());
     }
 
@@ -103,7 +116,7 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
         reuse.setSessionStartMs(source.readLong());
         reuse.setLastSeenMs(source.readLong());
         reuse.setTotalCount(source.readLong());
-        reuse.setErrorCount(source.readLong());
+        reuse.setErrorCount(version == PREVIOUS_VERSION ? (int) source.readLong() : source.readInt());
         reuse.setDistinctPathCount(source.readInt());
         return reuse;
     }

@@ -50,7 +50,7 @@ class RuleEvaluationFunctionTest {
     }
 
     /** Builds statistics with that error ratio, expressed as a count of failures out of the total. */
-    private static IpStats statsWithErrors(long totalCount, long errorCount) {
+    private static IpStats statsWithErrors(long totalCount, int errorCount) {
         IpStats stats = stats(IP, 1_000, totalCount);
         stats.setErrorCount(errorCount);
         return stats;

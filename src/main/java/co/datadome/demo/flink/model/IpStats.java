@@ -36,7 +36,7 @@ public final class IpStats {
     private long lastSeenMs;
 
     private long totalCount;
-    private long errorCount;
+    private int errorCount;
 
     /**
      * Number of distinct paths seen in this session. The paths themselves are not kept here: they
