@@ -3,12 +3,14 @@ package co.datadome.demo.flink.operator;
 import co.datadome.demo.flink.model.IpStats;
 import co.datadome.demo.flink.model.Rule;
 import co.datadome.demo.flink.model.RuleMatch;
+import co.datadome.demo.flink.state.RuleSerializer;
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.state.BroadcastState;
 import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.api.common.typeutils.base.StringSerializer;
 import org.apache.flink.streaming.api.functions.co.KeyedBroadcastProcessFunction;
 import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
@@ -28,7 +30,12 @@ public final class RuleEvaluationFunction extends KeyedBroadcastProcessFunction<
 
     private static final Logger LOG = LoggerFactory.getLogger(RuleEvaluationFunction.class);
 
-    public static final MapStateDescriptor<String, Rule> RULES_DESCRIPTOR = new MapStateDescriptor<>("rules", String.class, Rule.class);
+    /**
+     * Declared with an explicit {@link RuleSerializer}, so it's not using the
+     * {@link org.apache.flink.api.java.typeutils.runtime.PojoSerializer}.
+     */
+    public static final MapStateDescriptor<String, Rule> RULES_DESCRIPTOR =
+            new MapStateDescriptor<>("rules", StringSerializer.INSTANCE, new RuleSerializer());
 
     private static final MapStateDescriptor<String, Boolean> FIRED_RULE_IDS_DESCRIPTOR = new MapStateDescriptor<>("firedRuleIds", String.class, Boolean.class);
 
