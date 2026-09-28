@@ -80,7 +80,8 @@ Java 21, Maven, Docker with Compose.
 ```bash
 mvn package                     # build and run the tests
 ./scripts/start.sh              # Kafka + a Flink session cluster (hashmap backend)
-./scripts/submit.sh             # build if needed, then submit the job
+mvn package                     # build the project if needed
+./scripts/submit.sh             # submit the job
 ./scripts/generate-traffic.sh   # fake traffic, in its own terminal (contains one obvious bot)
 ./scripts/watch-matches.sh      # tail the matches, in another terminal
 
