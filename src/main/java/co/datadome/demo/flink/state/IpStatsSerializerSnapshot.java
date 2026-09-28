@@ -64,18 +64,17 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
     @Override
     public TypeSerializerSchemaCompatibility<IpStats> resolveSchemaCompatibility(TypeSerializerSnapshot<IpStats> old) {
 
-        if (!(old instanceof IpStatsSerializerSnapshot)) {
-            // The state was written by a different serializer altogether, PojoSerializer for
-            // instance. Nothing here knows how to read it.
-            return TypeSerializerSchemaCompatibility.incompatible();
+        if (old instanceof IpStatsSerializerSnapshot that) {
+            if (that.version == version) {
+                return TypeSerializerSchemaCompatibility.compatibleAsIs();
+            } else {
+                // Only one layout is known, so any other version is incompatible
+                return TypeSerializerSchemaCompatibility.incompatible();
+            }
         }
 
-        if (old.getCurrentVersion() == version) {
-            return TypeSerializerSchemaCompatibility.compatibleAsIs();
-        } else {
-            // Only one layout is known, so any other version is incompatible
-            return TypeSerializerSchemaCompatibility.incompatible();
-        }
+        // The state was written by a serializer we don't recognize, and can't read.
+        return TypeSerializerSchemaCompatibility.incompatible();
     }
 
     @Override
