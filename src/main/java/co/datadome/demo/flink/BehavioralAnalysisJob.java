@@ -8,9 +8,6 @@ import co.datadome.demo.flink.operator.IpStatsFunction;
 import co.datadome.demo.flink.operator.RuleEvaluationFunction;
 import co.datadome.demo.flink.serde.JsonDeserializer;
 import co.datadome.demo.flink.serde.JsonSerializer;
-
-import java.time.Duration;
-
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.Configuration;
@@ -24,6 +21,8 @@ import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.ParameterTool;
+
+import java.time.Duration;
 
 /**
  * A deliberately simplified behavioral analysis pipeline, used to demonstrate how Flink state can

@@ -1,9 +1,6 @@
 package co.datadome.demo.flink.state;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import co.datadome.demo.flink.model.IpStats;
-import java.io.IOException;
 import org.apache.flink.api.common.serialization.SerializerConfigImpl;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -11,6 +8,10 @@ import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.core.memory.DataInputDeserializer;
 import org.apache.flink.core.memory.DataOutputSerializer;
 import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class IpStatsSerializerTest {
 

@@ -1,10 +1,7 @@
 package co.datadome.demo.flink.operator;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import co.datadome.demo.flink.model.HttpRequest;
 import co.datadome.demo.flink.model.IpStats;
-import java.util.List;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.runtime.checkpoint.OperatorSubtaskState;
 import org.apache.flink.streaming.api.operators.KeyedProcessOperator;
@@ -14,6 +11,10 @@ import org.apache.flink.streaming.util.KeyedOneInputStreamOperatorTestHarness;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class IpStatsFunctionTest {
 

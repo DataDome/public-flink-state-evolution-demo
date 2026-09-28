@@ -1,11 +1,12 @@
 package co.datadome.demo.flink.model;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import co.datadome.demo.flink.serde.JsonDeserializer;
 import co.datadome.demo.flink.serde.JsonSerializer;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
+
+import java.nio.charset.StandardCharsets;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Checks that what the job writes to Kafka is what it can read back, and that the JSON published

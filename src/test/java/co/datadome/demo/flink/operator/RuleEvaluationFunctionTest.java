@@ -1,13 +1,10 @@
 package co.datadome.demo.flink.operator;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import co.datadome.demo.flink.model.HttpRequest;
 import co.datadome.demo.flink.model.IpStats;
 import co.datadome.demo.flink.model.Metric;
 import co.datadome.demo.flink.model.Rule;
 import co.datadome.demo.flink.model.RuleMatch;
-import java.util.List;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.streaming.api.operators.co.CoBroadcastWithKeyedOperator;
@@ -17,6 +14,10 @@ import org.apache.flink.streaming.util.KeyedBroadcastOperatorTestHarness;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class RuleEvaluationFunctionTest {
 

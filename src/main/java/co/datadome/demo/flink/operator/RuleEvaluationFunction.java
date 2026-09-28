@@ -3,9 +3,6 @@ package co.datadome.demo.flink.operator;
 import co.datadome.demo.flink.model.IpStats;
 import co.datadome.demo.flink.model.Rule;
 import co.datadome.demo.flink.model.RuleMatch;
-
-import java.util.Map;
-
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.state.BroadcastState;
 import org.apache.flink.api.common.state.MapState;
@@ -16,6 +13,8 @@ import org.apache.flink.streaming.api.functions.co.KeyedBroadcastProcessFunction
 import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 /**
  * Evaluates the broadcast rules against the statistics of each IP address.

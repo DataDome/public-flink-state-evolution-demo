@@ -1,14 +1,13 @@
 package co.datadome.demo.flink.state;
 
 import co.datadome.demo.flink.model.IpStats;
-import java.io.IOException;
-
-import lombok.EqualsAndHashCode;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.base.StringSerializer;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
+
+import java.io.IOException;
 
 /**
  * Writes {@link IpStats} to and from Flink state by hand.

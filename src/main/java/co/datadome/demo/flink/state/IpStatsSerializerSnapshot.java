@@ -1,12 +1,13 @@
 package co.datadome.demo.flink.state;
 
 import co.datadome.demo.flink.model.IpStats;
-import java.io.IOException;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.TypeSerializerSchemaCompatibility;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
+
+import java.io.IOException;
 
 /**
  * What Flink stores alongside the state so that it can work out, on restore, whether the state can
