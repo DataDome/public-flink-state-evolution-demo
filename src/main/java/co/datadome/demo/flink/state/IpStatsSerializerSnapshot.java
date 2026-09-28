@@ -7,8 +7,6 @@ import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 
-import java.io.IOException;
-
 /**
  * Serialized state of the type-serializer itself.
  */
@@ -45,7 +43,7 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
     }
 
     @Override
-    public void readSnapshot(int readVersion, DataInputView in, ClassLoader userCodeClassLoader) throws IOException {
+    public void readSnapshot(int readVersion, DataInputView in, ClassLoader userCodeClassLoader) {
         // An unknown version is accepted on purpose, so that resolveSchemaCompatibility can
         // report it rather than the restore failing here.
         version = readVersion;

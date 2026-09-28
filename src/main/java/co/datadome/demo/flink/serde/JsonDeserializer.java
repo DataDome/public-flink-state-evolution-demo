@@ -35,7 +35,7 @@ public final class JsonDeserializer<T> implements DeserializationSchema<T> {
     }
 
     @Override
-    public T deserialize(byte[] message) throws IOException {
+    public T deserialize(byte[] message) {
         if (message == null || message.length == 0) {
             return null;
         }
