@@ -55,14 +55,7 @@ change branches.
 
 ## Demonstrated evolutions
 
-### Add/remove a field
-**On branch: `use-case-add-remove-a-field`**
-
-TODO
-
-This is already supported by a `PojoSerializer`, so don't implement a custom serializer only to handle this use case. 
-
-### Change a field's type
+### Change a field in a class
 **On branch: `use-case-change-field-type`**
 
 This branch changes `errorCount` from a `long` to an `int`.
@@ -70,6 +63,9 @@ This branch changes `errorCount` from a `long` to an `int`.
 The type-serializer therefore has to handle two different versions: the old one (with a `long`) and the current one
 (with an `int`). In `StatsSerializerSnapshot.resolveSchemaCompatibility`, the old version appears as requiring a
 migration.
+
+Adding, removing, renaming or moving fields around follow a very similar pattern. Almost all changes inside the
+structure of the class can be handled that way.
 
 
 ### Rename class
