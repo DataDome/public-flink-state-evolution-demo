@@ -5,15 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 
 /**
- * Writes records of that type to a Kafka topic as JSON.
- *
- * @param <T> the type to serialize
+ * Writes records of that type as JSON.
  */
 public final class JsonSerializer<T> implements SerializationSchema<T> {
 
     private static final long serialVersionUID = 1L;
 
-    /** Not serializable, so it is rebuilt on the task manager in {@link #open}. */
+    /**
+     * Not serializable, so it is rebuilt on the task manager in {@link #open}.
+     */
     private transient ObjectMapper mapper;
 
     @Override

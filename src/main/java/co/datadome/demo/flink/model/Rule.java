@@ -11,9 +11,6 @@ import lombok.NoArgsConstructor;
  * once that session has at least {@link #getMinTotalRequests()} requests. Publishing a rule with
  * the same id replaces the previous version; publishing it with {@code enabled} set to false
  * removes it.
- *
- * <p>This class is mutable, and has a public no-argument constructor, because Flink only recognises
- * a type as a POJO (and therefore only uses {@code PojoSerializer} for it) under those conditions.
  */
 @Data
 @NoArgsConstructor
@@ -32,19 +29,19 @@ public final class Rule {
 
     /**
      * Number of requests a session must have before this rule is evaluated at all.
-     *
-     * <p>For example, the first failed request of a session is a 100% error ratio, and
-     * {@link Metric#DISTINCT_PATHS_AT_MOST} would match every session on its first request.
      */
     private long minTotalRequests;
 
     private boolean enabled;
 
-    /** Whether that statistics record reaches this rule's threshold. */
+    /**
+     * Whether that statistics record reaches this rule's threshold.
+     */
     public boolean matches(IpStats stats) {
         if (!enabled || stats.getTotalCount() < minTotalRequests) {
             return false;
+        } else {
+            return metric.isReached(stats, threshold);
         }
-        return metric.isReached(stats, threshold);
     }
 }

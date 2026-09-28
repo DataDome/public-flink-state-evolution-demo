@@ -10,22 +10,26 @@ import org.apache.flink.core.memory.DataOutputView;
 import java.io.IOException;
 
 /**
- * What Flink stores alongside the state so that it can work out, on restore, whether the state can
- * still be read.
+ * Serialized state of the type-serializer itself.
  */
 public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<IpStats> {
 
     /**
-     * Version of the record layout this snapshot describes. Exposed through
-     * {@link #getCurrentVersion()}, which is what gets persisted and read back.
+     * Version of the serialized layout this snapshot describes, passed by the {@link IpStatsSerializer}, or read from
+     * the savepoint when restoring the state.
      */
     private int version;
 
-    /** Required: Flink instantiates this reflectively before calling {@link #readSnapshot}. */
+    /**
+     * Required on deserialization: Flink instantiates this reflectively before calling {@link #readSnapshot}.
+     */
     public IpStatsSerializerSnapshot() {
         this(IpStatsSerializer.LATEST_VERSION);
     }
 
+    /**
+     * Used in the type-serializer to create the snapshot.
+     */
     IpStatsSerializerSnapshot(int version) {
         this.version = version;
     }
@@ -37,18 +41,16 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
 
     @Override
     public void writeSnapshot(DataOutputView out) {
-        // Deliberately empty: the version is reported through getCurrentVersion() instead.
+        // Nothing to do: IpStatsSerializer doesn't have any state apart from the version, directly handled by Flink.
     }
 
     @Override
-    public void readSnapshot(int readVersion, DataInputView in, ClassLoader userCodeClassLoader)
-            throws IOException {
+    public void readSnapshot(int readVersion, DataInputView in, ClassLoader userCodeClassLoader) throws IOException {
         // An unknown version is accepted on purpose, so that resolveSchemaCompatibility can
         // report it rather than the restore failing here.
         version = readVersion;
     }
 
-    /** Builds a serializer that handles the layout this snapshot describes. */
     @Override
     public TypeSerializer<IpStats> restoreSerializer() {
         return new IpStatsSerializer(version);
@@ -62,22 +64,20 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
      * that argument is the one restored from the savepoint.
      */
     @Override
-    public TypeSerializerSchemaCompatibility<IpStats> resolveSchemaCompatibility(
-            TypeSerializerSnapshot<IpStats> oldSerializerSnapshot) {
+    public TypeSerializerSchemaCompatibility<IpStats> resolveSchemaCompatibility(TypeSerializerSnapshot<IpStats> old) {
 
-        if (!(oldSerializerSnapshot instanceof IpStatsSerializerSnapshot that)) {
+        if (!(old instanceof IpStatsSerializerSnapshot)) {
             // The state was written by a different serializer altogether, PojoSerializer for
             // instance. Nothing here knows how to read it.
             return TypeSerializerSchemaCompatibility.incompatible();
         }
 
-        if (that.version == version) {
+        if (old.getCurrentVersion() == version) {
             return TypeSerializerSchemaCompatibility.compatibleAsIs();
+        } else {
+            // Only one layout is known, so any other version is incompatible
+            return TypeSerializerSchemaCompatibility.incompatible();
         }
-
-        // Only one layout exists so far. Once an older one does, it is recognised by its version
-        // here and answered with compatibleAfterMigration().
-        return TypeSerializerSchemaCompatibility.incompatible();
     }
 
     @Override

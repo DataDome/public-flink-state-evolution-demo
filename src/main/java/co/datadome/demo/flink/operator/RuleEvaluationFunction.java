@@ -28,17 +28,8 @@ public final class RuleEvaluationFunction extends KeyedBroadcastProcessFunction<
 
     private static final Logger LOG = LoggerFactory.getLogger(RuleEvaluationFunction.class);
 
-    /**
-     * Descriptor of the broadcast state holding the rules. Shared with the job, which needs it to
-     * build the broadcast stream, so both sides are guaranteed to use the same descriptor.
-     */
     public static final MapStateDescriptor<String, Rule> RULES_DESCRIPTOR = new MapStateDescriptor<>("rules", String.class, Rule.class);
 
-    /**
-     * Declared once and reused: the broadcast side reaches this same state through
-     * {@code applyToKeyedState}, and a descriptor built twice with a different name would silently
-     * address a different piece of state.
-     */
     private static final MapStateDescriptor<String, Boolean> FIRED_RULE_IDS_DESCRIPTOR = new MapStateDescriptor<>("firedRuleIds", String.class, Boolean.class);
 
     /**
@@ -69,7 +60,7 @@ public final class RuleEvaluationFunction extends KeyedBroadcastProcessFunction<
         Long knownSessionStart = sessionStartState.value();
         if (knownSessionStart == null) {
             // Only registered once per session; onTimer re-registers it while the session is alive.
-            ctx.timerService().registerEventTimeTimer(stats.getLastSeenMs() + SessionExpiry.GAP_MS);
+            ctx.timerService().registerEventTimeTimer(stats.getLastSeenMs() + SessionExpiration.GAP_MS);
         }
         if (knownSessionStart == null || stats.getSessionStartMs() > knownSessionStart) {
             // The upstream session expired and a new one started, so rules may fire again.
@@ -102,8 +93,7 @@ public final class RuleEvaluationFunction extends KeyedBroadcastProcessFunction<
         }
 
         // A rule that was just published is allowed to fire again, even for sessions where an
-        // earlier version of it already fired. Broadcast side cannot touch keyed state directly,
-        // so this walks every key of this operator instance.
+        // earlier version of it already fired.
         String ruleId = rule.getRuleId();
         ctx.applyToKeyedState(FIRED_RULE_IDS_DESCRIPTOR, (key, state) -> state.remove(ruleId));
     }
@@ -115,7 +105,7 @@ public final class RuleEvaluationFunction extends KeyedBroadcastProcessFunction<
             return;
         }
 
-        long expiresAt = lastSeen + SessionExpiry.GAP_MS;
+        long expiresAt = lastSeen + SessionExpiration.GAP_MS;
         if (timestamp < expiresAt) {
             ctx.timerService().registerEventTimeTimer(expiresAt);
             return;

@@ -113,7 +113,7 @@ class IpStatsFunctionTest {
         send(1_000, IP, "/a", 200);
         assertThat(harness.numKeyedStateEntries()).isPositive();
 
-        harness.processWatermark(new Watermark(1_000 + SessionExpiry.GAP_MS + 1));
+        harness.processWatermark(new Watermark(1_000 + SessionExpiration.GAP_MS + 1));
 
         assertThat(harness.numKeyedStateEntries())
                 .as("all state for the IP address should be gone after the inactivity gap")
@@ -124,25 +124,25 @@ class IpStatsFunctionTest {
     void keepsStateWhileTheSessionIsStillActive() throws Exception {
         send(1_000, IP, "/a", 200);
         // A later request keeps the session alive past the point the first timer was set for.
-        send(SessionExpiry.GAP_MS, IP, "/b", 200);
+        send(SessionExpiration.GAP_MS, IP, "/b", 200);
 
-        harness.processWatermark(new Watermark(1_000 + SessionExpiry.GAP_MS + 1));
+        harness.processWatermark(new Watermark(1_000 + SessionExpiration.GAP_MS + 1));
 
         assertThat(harness.numKeyedStateEntries())
                 .as("the session is still active, so the timer must have been re-registered")
                 .isPositive();
 
         // Once the later activity has itself aged out, the state finally goes away.
-        harness.processWatermark(new Watermark(2 * SessionExpiry.GAP_MS + 1));
+        harness.processWatermark(new Watermark(2 * SessionExpiration.GAP_MS + 1));
         assertThat(harness.numKeyedStateEntries()).isZero();
     }
 
     @Test
     void startsAFreshSessionAfterExpiry() throws Exception {
         send(1_000, IP, "/a", 200);
-        harness.processWatermark(new Watermark(1_000 + SessionExpiry.GAP_MS + 1));
+        harness.processWatermark(new Watermark(1_000 + SessionExpiration.GAP_MS + 1));
 
-        long later = 5 * SessionExpiry.GAP_MS;
+        long later = 5 * SessionExpiration.GAP_MS;
         send(later, IP, "/a", 200);
 
         IpStats fresh = emitted().getLast();

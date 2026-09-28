@@ -25,19 +25,9 @@ import org.apache.flink.util.ParameterTool;
 import java.time.Duration;
 
 /**
- * A deliberately simplified behavioral analysis pipeline, used to demonstrate how Flink state can
- * be evolved across versions of a job.
- *
- * <p>The pipeline reads HTTP requests and detection rules from Kafka, accumulates per-IP statistics
- * over a session, evaluates the rules against those statistics, and writes the matches back to
- * Kafka:
- *
- * <pre>
- *   requests --&gt; [ IpStatsFunction ] --&gt; stats --&gt; [ RuleEvaluationFunction ] --&gt; matches
- *   rules ----------------------- broadcast --------&gt;        ^
- * </pre>
- *
- * <p>See {@code docs/state-evolution.md} for what this job does to stay restorable.
+ * A simplified behavioral analysis pipeline. It reads HTTP requests and detection rules from Kafka, accumulates
+ * per-IP statistics over a session, evaluates the rules against those statistics, and writes the matches back to
+ * Kafka.
  */
 public final class BehavioralAnalysisJob {
 
@@ -78,9 +68,8 @@ public final class BehavioralAnalysisJob {
     }
 
     /**
-     * Configuration this job requires in order to be restorable. The state backend, the checkpoint
-     * directory and the savepoint directory are deliberately left to the cluster configuration, so
-     * that the demo can switch between backends without rebuilding the jar.
+     * The state backend, the checkpoint directory and the savepoint directory are deliberately left to the cluster
+     * configuration, so that we can switch them when testing.
      */
     static Configuration config() {
         Configuration config = new Configuration();
@@ -107,7 +96,8 @@ public final class BehavioralAnalysisJob {
             String requestsTopic,
             String rulesTopic,
             String matchesTopic,
-            String groupId) {
+            String groupId
+    ) {
 
         KafkaSource<HttpRequest> requestsSource =
                 KafkaSource.<HttpRequest>builder()

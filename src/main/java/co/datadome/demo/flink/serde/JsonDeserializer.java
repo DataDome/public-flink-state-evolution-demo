@@ -10,12 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /**
- * Reads JSON records of that type off a Kafka topic.
- *
- * <p>A record that cannot be parsed is logged and skipped rather than failing the job, because
- * during a live demo the rules topic is fed by hand.
- *
- * @param <T> the type to deserialize into
+ * Reads JSON records of that type. A record that cannot be parsed is logged and skipped rather than failing the job.
  */
 public final class JsonDeserializer<T> implements DeserializationSchema<T> {
 
@@ -25,7 +20,9 @@ public final class JsonDeserializer<T> implements DeserializationSchema<T> {
 
     private final Class<T> type;
 
-    /** Not serializable, so it is rebuilt on the task manager in {@link #open}. */
+    /**
+     * Not serializable, so it is rebuilt on the task manager in {@link #open}.
+     */
     private transient ObjectMapper mapper;
 
     public JsonDeserializer(Class<T> type) {

@@ -186,7 +186,7 @@ class RuleEvaluationFunctionTest {
 
         // A two-input operator advances event time at the pace of its slowest input, so both sides
         // have to move for the expiry timer to fire.
-        advanceBothInputsTo(10 * SessionExpiry.GAP_MS);
+        advanceBothInputsTo(10 * SessionExpiration.GAP_MS);
 
         assertThat(harness.numEventTimeTimers())
                 .as("the expiry timer should not have been re-registered")
@@ -204,10 +204,10 @@ class RuleEvaluationFunctionTest {
         sendStats(stats(IP, 1_000, 10));
 
         IpStats later = stats(IP, 1_000, 11);
-        later.setLastSeenMs(SessionExpiry.GAP_MS);
+        later.setLastSeenMs(SessionExpiration.GAP_MS);
         sendStats(later);
 
-        advanceBothInputsTo(1_000 + SessionExpiry.GAP_MS + 1);
+        advanceBothInputsTo(1_000 + SessionExpiration.GAP_MS + 1);
 
         assertThat(harness.numEventTimeTimers())
                 .as("the session is still active, so the timer must have been re-registered")

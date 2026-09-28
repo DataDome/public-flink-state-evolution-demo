@@ -10,21 +10,19 @@ import org.apache.flink.core.memory.DataOutputView;
 import java.io.IOException;
 
 /**
- * Writes {@link IpStats} to and from Flink state by hand.
- *
- * <p>Flink serializes {@link IpStats} perfectly well on its own, so this class is not needed. It
- * exists to show what a custom serializer has to do to stay restorable across versions of a job,
- * which is the part {@code PojoSerializer} otherwise hides.
+ * Writes {@link IpStats} to and from Flink state.
  */
 public final class IpStatsSerializer extends TypeSerializer<IpStats> {
 
     private static final long serialVersionUID = 1L;
 
-    /** Version of the record layout this code reads and writes. */
+    /**
+     * Latest version of the serialized layout.
+     */
     public static final int LATEST_VERSION = 1;
 
     /**
-     * Version of the record layout this instance handles: {@link #LATEST_VERSION}, or the version read
+     * Version of the serialized layout this instance handles: {@link #LATEST_VERSION}, or the version read
      * from the savepoint when this serializer was built to restore existing state.
      */
     private final int version;
@@ -37,7 +35,6 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
         this.version = version;
     }
 
-    /** Version of the record layout this instance handles. */
     public int getVersion() {
         return version;
     }
@@ -50,7 +47,7 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
 
     @Override
     public TypeSerializer<IpStats> duplicate() {
-        // Immutable, so it is already safe to share between threads.
+        // The type-serializer is immutable, so it is safe to share between threads.
         return this;
     }
 
@@ -109,7 +106,8 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
 
     @Override
     public void copy(DataInputView source, DataOutputView target) throws IOException {
-        // Could be done byte by byte, but the record is small and this cannot drift from the layout.
+        // Could be done byte by byte to be faster, which requires to know how many bytes must be read/written, which is
+        // a consequence of the layout. Here, we went for the simpler (but slower) solution.
         serialize(deserialize(source), target);
     }
 

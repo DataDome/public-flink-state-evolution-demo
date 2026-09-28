@@ -14,17 +14,16 @@ import org.apache.flink.util.Collector;
 /**
  * Accumulates per-IP statistics over a session, and emits the updated statistics on every request.
  *
- * <p>There is no window. Statistics accumulate for as long as requests keep arriving for the same
- * IP address, and are discarded after {@link SessionExpiry#GAP} without activity. Emitting on every
- * request means a rule fires as soon as its threshold is crossed, rather than at a window boundary.
+ * <p>Statistics accumulate for as long as requests keep arriving for the same IP address, and are discarded after
+ * {@link SessionExpiration#GAP} without activity.
  */
 public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequest, IpStats> {
 
     private static final long serialVersionUID = 1L;
 
     /**
-     * Declared with an explicit {@link IpStatsSerializer} rather than from the type, so that the
-     * demo controls the state layout itself.
+     * Declared with an explicit {@link IpStatsSerializer}, so it's not using the
+     * {@link org.apache.flink.api.java.typeutils.runtime.PojoSerializer}.
      */
     private static final ValueStateDescriptor<IpStats> IP_STATS_DESCRIPTOR =
             new ValueStateDescriptor<>("ipStats", new IpStatsSerializer());
@@ -32,15 +31,10 @@ public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequ
     private static final MapStateDescriptor<String, Boolean> SEEN_PATHS_DESCRIPTOR =
             new MapStateDescriptor<>("seenPaths", String.class, Boolean.class);
 
-    /** The accumulated statistics. This is the piece of state the evolution demo revolves around. */
     private transient ValueState<IpStats> statsState;
 
     /**
      * Paths already seen in this session, backing {@link IpStats#getDistinctPathCount()}.
-     *
-     * <p>Deliberately a {@code MapState} and not a {@code Set} inside {@link IpStats}: a collection
-     * field in a POJO falls back to Kryo, which cannot evolve, and the job disables generic types
-     * so that such a fallback fails loudly instead of silently.
      */
     private transient MapState<String, Boolean> seenPathsState;
 
@@ -57,7 +51,7 @@ public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequ
             stats = IpStats.startingWith(request);
             // Only registered once per session; onTimer re-registers it for as long as the session
             // stays alive, which keeps this to one timer per key instead of one per request.
-            ctx.timerService().registerEventTimeTimer(request.getTimestampMs() + SessionExpiry.GAP_MS);
+            ctx.timerService().registerEventTimeTimer(request.getTimestampMs() + SessionExpiration.GAP_MS);
         }
 
         stats.accumulate(request);
@@ -77,7 +71,7 @@ public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequ
             return;
         }
 
-        long expiresAt = stats.getLastSeenMs() + SessionExpiry.GAP_MS;
+        long expiresAt = stats.getLastSeenMs() + SessionExpiration.GAP_MS;
         if (timestamp < expiresAt) {
             // Requests arrived since this timer was set, so the session is still alive.
             ctx.timerService().registerEventTimeTimer(expiresAt);
