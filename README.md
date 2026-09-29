@@ -78,7 +78,6 @@ Java 21, Maven, Docker with Compose.
 ### Run
 
 ```bash
-mvn package                     # build and run the tests
 ./scripts/start.sh              # Kafka + a Flink session cluster (hashmap backend)
 mvn package                     # build the project if needed
 ./scripts/submit.sh             # submit the job
