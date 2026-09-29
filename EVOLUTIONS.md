@@ -59,29 +59,31 @@ change branches.
 **On branch: `use-case-change-field-type`**
 
 This branch changes `errorCount` from a `long` to an `int`.
-
 The type-serializer therefore has to handle two different versions: the old one (with a `long`) and the current one
-(with an `int`). In `StatsSerializerSnapshot.resolveSchemaCompatibility`, the old version appears as requiring a
-migration.
+(with an `int`).
+In `StatsSerializerSnapshot.resolveSchemaCompatibility`, the old version appears as requiring a migration.
 
-Adding, removing, renaming or moving fields around follow a very similar pattern. Almost all changes inside the
-structure of the class can be handled that way.
+Adding, removing, renaming or moving fields around follow a very similar pattern.
+Almost all changes inside the structure of the class can be handled that way.
 
 
 ### Rename class
 **On branch: `use-case-rename-a-class`**
 
 This branch renames the `IpStats` class to `Stats`, and its serializer and snapshot with it.
-
-Note that the old `IpStatsSerializerSnapshot` must be kept, as the TS-Snapshot is restored by class-name from the
-savepoint. So, it needs to stay on the classpath, and hands back a `StatsSerializer` (so we don't have to keep
-`IpStatsSerializer`). In `StatsSerializerSnapshot.resolveSchemaCompatibility`, we handle both snapshot classes as
-compatible.
+The old `IpStatsSerializerSnapshot` must be kept on the classpath, as the TS-Snapshot is restored by class-name from the savepoint.
+It hands back a `StatsSerializer` (so we don't have to keep `IpStatsSerializer`).
+In `StatsSerializerSnapshot.resolveSchemaCompatibility`, we handle both snapshot classes as compatible.
 
 Note that we don't change the state descriptor name (`"ipStats"`): renaming it would drop the old state.
 
-### Others
-Those don't exist yet, but should be added progressively.
 
-- Move from PojoSerializer to a custom serializer.
+### Switch serializer
+**On branch: `use-case-switch-serializer`**
 
+This branch declares a custom `RuleSerializer` for the `rules` state in `RuleEvaluationFunction`.
+The associated type-serializer-snapshot handles migrating from the generic `PojoSerializer` used in the `main` branch.
+
+In most cases, switching from one serializer to another will follow the same pattern.
+Note that switching *back* to a `PojoSerializer` from a custom serializer is not possible in that way (because you do
+not control the `PojoSerializerSnapshot` and therefore cannot configure its compatibility).
