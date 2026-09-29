@@ -11,15 +11,23 @@ import java.io.IOException;
 
 /**
  * Writes {@link IpStats} to and from Flink state.
+ *
+ * <p>Two layouts exist, and an instance handles exactly one of them: {@link #LATEST_VERSION} for a
+ * job writing state now, or {@link #PREVIOUS_VERSION} for an instance built by
+ * {@link IpStatsSerializerSnapshot#restoreSerializer()} to read a savepoint written before
+ * {@code errorCount} became an int.
  */
 public final class IpStatsSerializer extends TypeSerializer<IpStats> {
 
     private static final long serialVersionUID = 1L;
 
+    /** Previous version of the serialized layout: it wrote {@code errorCount} as a long (version 2 writes it as an int). */
+    public static final int PREVIOUS_VERSION = 1;
+
     /**
      * Latest version of the serialized layout.
      */
-    public static final int LATEST_VERSION = 1;
+    public static final int LATEST_VERSION = 2;
 
     /**
      * Version of the serialized layout this instance handles: {@link #LATEST_VERSION}, or the version read
@@ -84,7 +92,11 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
         target.writeLong(record.getSessionStartMs());
         target.writeLong(record.getLastSeenMs());
         target.writeLong(record.getTotalCount());
-        target.writeLong(record.getErrorCount());
+        if (version == PREVIOUS_VERSION) {
+            target.writeLong(record.getErrorCount());
+        } else {
+            target.writeInt(record.getErrorCount());
+        }
         target.writeInt(record.getDistinctPathCount());
     }
 
@@ -99,7 +111,11 @@ public final class IpStatsSerializer extends TypeSerializer<IpStats> {
         reuse.setSessionStartMs(source.readLong());
         reuse.setLastSeenMs(source.readLong());
         reuse.setTotalCount(source.readLong());
-        reuse.setErrorCount(source.readLong());
+        if (version == PREVIOUS_VERSION) {
+            reuse.setErrorCount((int) source.readLong());
+        } else {
+            reuse.setErrorCount(source.readInt());
+        }
         reuse.setDistinctPathCount(source.readInt());
         return reuse;
     }
