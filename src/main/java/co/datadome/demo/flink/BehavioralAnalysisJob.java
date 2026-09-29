@@ -140,7 +140,7 @@ public final class BehavioralAnalysisJob {
                 env.fromSource(requestsSource, requestsWatermarks, "HTTP requests")
                         .uid("source-http-requests")
                         .keyBy(HttpRequest::getIp)
-                        .process(new IpStatsFunction(env.getConfig()))
+                        .process(new IpStatsFunction())
                         .uid("ip-stats")
                         .name("IP statistics");
 

@@ -2,8 +2,6 @@ package co.datadome.demo.flink.operator;
 
 import co.datadome.demo.flink.model.HttpRequest;
 import co.datadome.demo.flink.model.IpStats;
-import co.datadome.demo.flink.state.IpStatsPojoSerializer;
-import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
@@ -22,13 +20,11 @@ public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequ
 
     private static final long serialVersionUID = 1L;
 
+    private static final ValueStateDescriptor<IpStats> IP_STATS_DESCRIPTOR =
+            new ValueStateDescriptor<>("ipStats", IpStats.class);
+
     private static final MapStateDescriptor<String, Boolean> SEEN_PATHS_DESCRIPTOR =
             new MapStateDescriptor<>("seenPaths", String.class, Boolean.class);
-
-    /**
-     * Can't be a constant, because it requires the job's execution config
-     */
-    private final ValueStateDescriptor<IpStats> ipStatsDescriptor;
 
     private transient ValueState<IpStats> statsState;
 
@@ -37,14 +33,9 @@ public final class IpStatsFunction extends KeyedProcessFunction<String, HttpRequ
      */
     private transient MapState<String, Boolean> seenPathsState;
 
-    public IpStatsFunction(ExecutionConfig executionConfig) {
-        var serConfig = executionConfig.getSerializerConfig();
-        ipStatsDescriptor = new ValueStateDescriptor<>("ipStats", new IpStatsPojoSerializer(serConfig, false));
-    }
-
     @Override
     public void open(OpenContext openContext) {
-        statsState = getRuntimeContext().getState(ipStatsDescriptor);
+        statsState = getRuntimeContext().getState(IP_STATS_DESCRIPTOR);
         seenPathsState = getRuntimeContext().getMapState(SEEN_PATHS_DESCRIPTOR);
     }
 
