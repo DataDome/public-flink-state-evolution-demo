@@ -67,10 +67,6 @@ public final class IpStatsSerializerSnapshot implements TypeSerializerSnapshot<I
         if (old instanceof IpStatsSerializerSnapshot that) {
             if (that.version == version) {
                 return TypeSerializerSchemaCompatibility.compatibleAsIs();
-            } else if (that.version == IpStatsSerializer.PREVIOUS_VERSION && version == IpStatsSerializer.LATEST_VERSION) {
-                // This is the snapshot for the latest version, and restoring from the savepoint gave us a snapshot for the previous version.
-                // The layout has changed, and the serializer can handle it.
-                return TypeSerializerSchemaCompatibility.compatibleWithReconfiguredSerializer(old.restoreSerializer());
             } else {
                 // Other versions cannot be handled => incompatible
                 return TypeSerializerSchemaCompatibility.incompatible();
