@@ -78,12 +78,29 @@ In `StatsSerializerSnapshot.resolveSchemaCompatibility`, we handle both snapshot
 Note that we don't change the state descriptor name (`"ipStats"`): renaming it would drop the old state.
 
 
-### Switch serializer
+### Switch to a custom serializer
 **On branch: `use-case-switch-serializer`**
 
 This branch declares a custom `RuleSerializer` for the `rules` state in `RuleEvaluationFunction`.
 The associated type-serializer-snapshot handles migrating from the generic `PojoSerializer` used in the `main` branch.
 
-In most cases, switching from one serializer to another will follow the same pattern.
-Note that switching *back* to a `PojoSerializer` from a custom serializer is not possible in that way (because you do
-not control the `PojoSerializerSnapshot` and therefore cannot configure its compatibility).
+In most cases, switching from one serializer to another custom serializer will follow the same pattern.
+
+Note that switching *back* to a `PojoSerializer` (or any default serializer) from a custom serializer is not possible in
+that way (because you do not control the `PojoSerializerSnapshot` and therefore cannot configure its compatibility).
+See next use case if that is what you need.
+
+### Switch to a default serializer
+**On branch: `use-case-switch-to-pojoserializer`**
+
+This branch goes back to a `PojoSerializer` for the `ipStats` state in `IpStatsFunction`.
+The migration must be done in two steps (two deployments), represented by a commit each:
+- The first commit introduces an intermediate `IpStatsPojoSerializer` (and associated snapshot). 
+It accepts the old `IpStatsSerializerSnapshot` from the savepoint and deserializes instances with `IpStatsSerializer`.
+Once reconfigured, the serializer produces directly the target `PojoSerializerSnapshot`, and serializes using 
+`PojoSerializer`.
+- The second commit drops all custom code, as we now have a `PojoSerializerSnapshot` in the savepoint (and the
+corresponding layout).
+
+It is one of the rare use cases of the `COMPATIBLE_WITH_RECONFIGURED_SERIALIZER` compatibility result!
+
